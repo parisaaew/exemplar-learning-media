@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คลังสื่อการเรียนรู้ผลงานต้นแบบ</title>
+  <!-- Google Fonts: Prompt & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">คลังสื่อผลงานต้นแบบ</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- 1. เกณฑ์ประเมิน -->
+        <button id="rubricGuideBtn" class="btn btn-outline-nav" title="ดูเกณฑ์การประเมินดาว 3 มิติ">
+          <i class="fa-solid fa-book-open"></i>
+          <span>เกณฑ์ประเมิน</span>
+        </button>
+
+        <!-- 2. สรุปถอดบทเรียน (Checklist) -->
+        <button id="openChecklistModalBtn" class="btn btn-outline-nav" title="แบบสรุปถอดบทเรียนประเมินความรู้ K">
+          <i class="fa-solid fa-pen-to-square"></i>
+          <span>สรุปถอดบทเรียน (Checklist)</span>
+        </button>
+
+        <!-- 3. ส่งผลงานแบนเนอร์ (งานเดี่ยว) -->
+        <button id="openSubmitBannerModalBtn" class="btn btn-outline-nav" title="ส่งผลงานแบนเนอร์ที่ออกแบบ (งานเดี่ยว)">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>ส่งแบนเนอร์ของฉัน</span>
+        </button>
+
+        <!-- 4. เข้าสู่ระบบครู (แอดมิน) -->
+        <button id="adminToggleBtn" class="btn btn-admin">
+          <i class="fa-solid fa-user-shield"></i>
+          <span id="adminBtnText">เข้าสู่ระบบครู</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Banner แจ้งเตือนเมื่ออยู่ใน Admin Mode -->
+  <div id="adminModeBanner" class="admin-banner hidden">
+    <div class="container admin-banner-content">
+      <div class="admin-banner-text">
+        <i class="fa-solid fa-lock-open me-2"></i>
+        <span>คุณกำลังอยู่ใน <strong>โหมดผู้ดูแลระบบ (Admin Panel)</strong> - สามารถบริหารจัดการสื่อ หมวดหมู่ และดูผลสรุปถอดบทเรียนของนักเรียนได้</span>
+      </div>
+      <button id="exitAdminBtn" class="btn btn-sm btn-light">
+        <i class="fa-solid fa-right-from-bracket me-1"></i> ออกจากโหมดแอดมิน
+      </button>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="hero-bg-accent"></div>
+    <div class="container hero-container">
+      <h1 class="hero-title">
+        คลังสื่อการเรียนรู้ <br>
+        <span class="gradient-text">ผลงานต้นแบบ</span>
+      </h1>
+      <p class="hero-description">
+        ศูนย์รวมผลงานดิจิทัลต้นแบบ เช่น เว็บไซต์ประยุกต์, แบนเนอร์สื่อความหมาย, วิดีโอ UX/UI และใบความรู้ 
+        เพื่อให้ผู้เรียนเข้ามาศึกษา วิเคราะห์องค์ประกอบ สรุปถอดบทเรียนความรู้ และส่งผลงานแบนเนอร์ของตนเอง
+      </p>
+
+      <!-- Stat Badges in Hero -->
+      <div class="hero-stats">
+        <div class="stat-chip">
+          <i class="fa-solid fa-layer-group"></i>
+          <span id="totalMediaStat">0</span> สื่อการเรียนรู้
+        </div>
+        <div class="stat-chip clickable-chip" onclick="openAvgRatingSummaryModal()" style="cursor: pointer;" title="คลิกดูสรุปคะแนนประเมินดาวเจาะลึก 3 มิติ">
+          <i class="fa-solid fa-star text-amber"></i>
+          <span id="avgRatingStat">0.0</span> คะแนนประเมินเฉลี่ย
+        </div>
+        <div class="stat-chip">
+          <i class="fa-solid fa-users text-cyan"></i>
+          <span id="totalReviewsStat">0</span> ครั้งที่ร่วมประเมิน
+        </div>
+        <!-- ชิปแสดงจำนวนนักเรียนส่งสรุปบทเรียน -->
+        <div class="stat-chip highlight-chip" id="checklistsStatChip">
+          <i class="fa-solid fa-clipboard-check text-emerald"></i>
+          <span id="totalChecklistsStat">0</span> นักเรียนส่งสรุปบทเรียนแล้ว
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container main-content">
+
+    <!-- Search & Filter Controls -->
+    <section class="controls-section">
+      <div class="search-bar-wrapper">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="searchInput" placeholder="ค้นหาชื่อสื่อ, คำอธิบาย หรือแท็กหมวดหมู่..." autocomplete="off">
+        <button id="clearSearchBtn" class="btn-clear hidden" title="ล้างการค้นหา">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Dynamic Filter Tabs Container -->
+      <div class="filter-tabs" id="filterTabs">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- Admin Operations Toolbar (Visible only in Admin Mode) -->
+    <section id="adminToolbar" class="admin-toolbar hidden">
+      <div class="admin-toolbar-header">
+        <h2><i class="fa-solid fa-sliders text-indigo me-2"></i>เครื่องมือจัดการหลังบ้านครู</h2>
+        <div class="admin-toolbar-actions">
+          <!-- 1. เพิ่มสื่อใหม่ -->
+          <button id="openAddMediaModalBtn" class="btn btn-admin-tool">
+            <i class="fa-solid fa-plus me-1 text-indigo"></i> เพิ่มสื่อใหม่
+          </button>
+          
+          <!-- 2. จัดการหมวดหมู่สื่อ -->
+          <button id="openManageCategoriesModalBtn" class="btn btn-admin-tool">
+            <i class="fa-solid fa-tags me-1 text-amber"></i> จัดการหมวดหมู่สื่อ
+          </button>
+
+          <!-- 3. ตรวจสรุปถอดบทเรียนนักเรียน -->
+          <button id="openViewChecklistsModalBtn" class="btn btn-admin-tool">
+            <i class="fa-solid fa-list-check me-1 text-emerald"></i> ตรวจสรุปถอดบทเรียนนักเรียน
+          </button>
+
+          <!-- 4. Export ผลประเมินดาว (CSV) -->
+          <button id="exportCsvBtn" class="btn btn-admin-tool">
+            <i class="fa-solid fa-file-excel me-1 text-cyan"></i> Export ผลประเมินดาว (CSV)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Media Cards Section -->
+    <section class="media-section">
+      <div class="section-header">
+        <h2 id="sectionTitle"><i class="fa-solid fa-list-check me-2"></i>รายการสื่อการเรียนรู้ต้นแบบ</h2>
+        <span id="resultCountBadge" class="count-badge">แสดง 0 รายการ</span>
+      </div>
+
+      <!-- Grid Container for Media Cards -->
+      <div id="mediaGrid" class="media-grid">
+        <!-- Media Cards injected dynamically by app.js -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
+        <h3>ไม่พบสื่อการเรียนรู้ที่ค้นหา</h3>
+        <p>ลองเปลี่ยนคำค้นหาหรือเลือกหมวดหมู่อื่นดูนะครับ</p>
+        <button id="resetFiltersBtn" class="btn btn-outline">แสดงสื่อทั้งหมด</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-info">
+        <p class="footer-title">คลังสื่อการเรียนรู้ผลงานต้นแบบ</p>
+        <p class="footer-sub">พัฒนาระบบโดยนางปริศา มานพ ครูโรงเรียนวัดนาวง</p>
+      </div>
+      <div class="footer-links">
+        <button class="footer-link-btn" onclick="openRubricModal()">เกณฑ์การประเมินดาว</button> | 
+        <button class="footer-link-btn" onclick="openChecklistModal()">สรุปถอดบทเรียน (Define Checklist)</button> | 
+        <button class="footer-link-btn" onclick="openSubmitBannerModal()">ส่งผลงานแบนเนอร์ของฉัน</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= MODALS SECTION ================= -->
+
+  <!-- 1. Student Individual Banner Submission Modal (ส่งผลงานแบนเนอร์งานเดี่ยว) -->
+  <div id="submitBannerModal" class="modal-overlay hidden">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fa-solid fa-cloud-arrow-up text-emerald me-2"></i>ส่งผลงานแบนเนอร์ (งานเดี่ยว)</h3>
+          <p class="modal-subtitle">อัปโหลดแบนเนอร์ที่นักเรียนออกแบบ เพื่อเข้าสู่คลังสื่อการเรียนรู้ให้เพื่อนๆ ร่วมประเมิน</p>
+        </div>
+        <button class="modal-close" onclick="closeSubmitBannerModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <form id="studentBannerForm" onsubmit="handleStudentBannerSubmit(event)">
+          
+          <!-- ข้อมูลผู้เรียน -->
+          <div class="checklist-section-box mb-3">
+            <h4><i class="fa-solid fa-user-graduate text-indigo me-2"></i>ข้อมูลผู้เรียน (เจ้าของผลงาน)</h4>
+            <div class="form-row mt-2">
+              <div class="form-group col-6">
+                <label for="bannerAuthorName">ชื่อ - นามสกุลผู้เรียน *</label>
+                <input type="text" id="bannerAuthorName" class="form-control" placeholder="เช่น ด.ช.สมชาย ใจดี" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="bannerStudentClass">ชั้น *</label>
+                <input type="text" id="bannerStudentClass" class="form-control" placeholder="เช่น ม.3/1" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="bannerStudentNo">เลขที่ *</label>
+                <input type="number" id="bannerStudentNo" class="form-control" placeholder="เช่น 5" min="1" max="60" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="bannerAcademicYear">ปีการศึกษา *</label>
+                <input type="text" id="bannerAcademicYear" class="form-control" value="2567" placeholder="เช่น 2567" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- รายละเอียดผลงานแบนเนอร์ -->
+          <div class="checklist-question-box mb-3">
+            <div class="form-group">
+              <label for="bannerTitleInput" class="question-title text-indigo">ชื่อผลงานแบนเนอร์ / หัวข้อประชาสัมพันธ์ *</label>
+              <input type="text" id="bannerTitleInput" class="form-control mt-1" placeholder="เช่น แบนเนอร์รณรงค์ประหยัดพลังงานดิจิทัล" required>
+            </div>
+
+            <div class="form-group mt-3">
+              <label for="bannerConceptInput" class="question-title text-amber">แนวคิดการออกแบบสรุปสั้นๆ (Design Concept) *</label>
+              <p class="question-hint">(อธิบายจุดเด่นเรื่องการเลือกใช้สี, ฟอนต์ หรือจุดสนใจ Call to Action ของแบนเนอร์นี้)</p>
+              <textarea id="bannerConceptInput" class="form-control" rows="3" placeholder="✍️ อธิบายแนวคิดการออกแบบ..." required></textarea>
+            </div>
+          </div>
+
+          <!-- แนบไฟล์รูปภาพแบนเนอร์ -->
+          <div class="checklist-question-box mb-3">
+            <label class="question-title text-rose">
+              <i class="fa-solid fa-image me-1"></i> ไฟล์รูปภาพแบนเนอร์ที่ออกแบบ *
+            </label>
+            <p class="question-hint">เลือกอัปโหลดรูปภาพแบนเนอร์จากเครื่อง (ไฟล์ JPG/PNG) หรือวางลิงก์รูปภาพ</p>
+
+            <div class="form-group mt-2">
+              <label for="bannerFileInput">1. เลือกรูปภาพจากเครื่องของฉัน:</label>
+              <input type="file" id="bannerFileInput" class="form-control" accept="image/*" onchange="previewBannerImage(event)">
+            </div>
+
+            <div class="form-group mt-2">
+              <label for="bannerUrlInput">2. หรือวางลิงก์ URL รูปภาพ / Canva (กรณีไม่อัปโหลดไฟล์):</label>
+              <input type="url" id="bannerUrlInput" class="form-control" placeholder="https://..." oninput="previewBannerUrl(event)">
+            </div>
+
+            <!-- Previews -->
+            <div id="bannerImagePreviewBox" class="mt-3 hidden text-center" style="background: #0f172a; padding: 1rem; border-radius: var(--radius-md);">
+              <p class="text-light mb-2" style="font-size: 0.85rem;"><i class="fa-solid fa-eye me-1"></i> ตัวอย่างรูปภาพแบนเนอร์ที่จะส่ง:</p>
+              <img id="bannerImagePreview" src="" alt="Preview" style="max-height: 250px; max-width: 100%; border-radius: var(--radius-sm); object-fit: contain;">
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="closeSubmitBannerModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> ส่งผลงานแบนเนอร์เข้าคลังสื่อ</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Modal สรุปคะแนนประเมินดาว 3 มิติภาพรวม (เมื่อคลิกที่ ชิปคะแนนประเมินเฉลี่ย) -->
+  <div id="avgRatingSummaryModal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fa-solid fa-chart-line text-amber me-2"></i>สรุปผลคะแนนประเมินดาว 3 มิติภาพรวม</h3>
+          <p class="modal-subtitle">คะแนนดาวเฉลี่ยเจาะลึกจากการประเมินสื่อของผู้เรียนทุกคน</p>
+        </div>
+        <button class="modal-close" onclick="closeAvgRatingSummaryModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Big Score Hero Card -->
+        <div class="rating-overall-hero mb-4">
+          <div class="big-score-num text-amber" id="modalHeroAvgScore">0.0</div>
+          <div class="big-score-stars" id="modalHeroAvgStars">⭐⭐⭐⭐⭐</div>
+          <p class="mt-1 text-muted" id="modalHeroTotalReviews">คำนวณจากทั้งหมด 0 ครั้งที่ร่วมประเมิน</p>
+        </div>
+
+        <!-- 3-Dimension Score Breakdown Progress Bars -->
+        <h4 class="mb-3"><i class="fa-solid fa-layer-group text-indigo me-2"></i>คะแนนดาวเฉลี่ยแยกรายมิติ</h4>
+        
+        <div class="dim-score-card mb-3">
+          <div class="dim-score-header">
+            <span><i class="fa-solid fa-font text-indigo me-2"></i><strong>1. Readability (ความอ่านง่าย)</strong></span>
+            <span class="dim-score-badge" id="dimReadabilityScore">0.0 / 5.0</span>
+          </div>
+          <div class="progress-bar-bg mt-2">
+            <div class="progress-bar-fill fill-indigo" id="dimReadabilityBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="dim-score-card mb-3">
+          <div class="dim-score-header">
+            <span><i class="fa-solid fa-palette text-amber me-2"></i><strong>2. Visual Harmony (ความสวยงาม)</strong></span>
+            <span class="dim-score-badge" id="dimVisualScore">0.0 / 5.0</span>
+          </div>
+          <div class="progress-bar-bg mt-2">
+            <div class="progress-bar-fill fill-amber" id="dimVisualBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="dim-score-card mb-3">
+          <div class="dim-score-header">
+            <span><i class="fa-solid fa-bullseye text-rose me-2"></i><strong>3. Focus & CTA (จุดสนใจ)</strong></span>
+            <span class="dim-score-badge" id="dimFocusScore">0.0 / 5.0</span>
+          </div>
+          <div class="progress-bar-bg mt-2">
+            <div class="progress-bar-fill fill-rose" id="dimFocusBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Top 3 Highest Rated Media List -->
+        <h4 class="mt-4 mb-2"><i class="fa-solid fa-trophy text-amber me-2"></i>สื่อที่ได้คะแนนดาวสูงสุด 3 อันดับแรก</h4>
+        <div id="topRatedSummaryList" class="top-rated-list">
+          <!-- Rendered dynamically -->
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeAvgRatingSummaryModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Individual Student Define Checklist Modal (ประเมินความรู้ด้าน K) -->
+  <div id="checklistModal" class="modal-overlay hidden">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fa-solid fa-pen-to-square text-indigo me-2"></i>แบบสรุปถอดบทเรียน (Define Checklist)</h3>
+          <p class="modal-subtitle">สำรวจและประเมินผลงานต้นแบบเพื่อกำหนดเกณฑ์การออกแบบสื่อของตนเอง</p>
+        </div>
+        <button class="modal-close" onclick="closeChecklistModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <form id="checklistForm" onsubmit="handleChecklistSubmit(event)">
+          
+          <!-- ข้อมูลส่วนตัวนักเรียน -->
+          <div class="checklist-section-box">
+            <h4><i class="fa-solid fa-user-graduate text-indigo me-2"></i>ข้อมูลผู้เรียน</h4>
+            <div class="form-row mt-2">
+              <div class="form-group col-6">
+                <label for="studentName">ชื่อ - นามสกุล *</label>
+                <input type="text" id="studentName" class="form-control" placeholder="เช่น ด.ช.สมชาย ใจดี" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="studentClass">ชั้น *</label>
+                <input type="text" id="studentClass" class="form-control" placeholder="เช่น ม.3/1" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="studentNo">เลขที่ *</label>
+                <input type="number" id="studentNo" class="form-control" placeholder="เช่น 5" min="1" max="60" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- ข้อความคำชี้แจง -->
+          <div class="alert alert-info mt-3">
+            <i class="fa-solid fa-circle-info me-1"></i> <strong>คำชี้แจง:</strong> จากการสำรวจและประเมินผลงานต้นแบบ ให้นักเรียนระบุข้อสรุปเพื่อใช้เป็นเกณฑ์การออกแบบสื่อ/แบนเนอร์ของตนเอง
+          </div>
+
+          <!-- ข้อที่ 1: Best Practices -->
+          <div class="checklist-question-box mt-3">
+            <label class="question-title text-indigo">
+              1. ข้อดีที่ควรนำมาเป็นแบบอย่าง (Best Practices) *
+            </label>
+            <p class="question-hint">(แบนเนอร์หรือสื่อที่ได้ดาวเยอะ มีลักษณะอย่างไรที่เราจะนำมาปรับใช้กับงานของเรา?)</p>
+            <textarea id="bestPracticesInput" class="form-control" rows="3" placeholder="✍️ พิมพ์สรุปข้อดีที่เป็นแบบอย่าง..." required></textarea>
+          </div>
+
+          <!-- ข้อที่ 2: Things to Avoid -->
+          <div class="checklist-question-box mt-3">
+            <label class="question-title text-rose">
+              2. ข้อผิดพลาดที่ต้องระวังและหลีกเลี่ยง (Things to Avoid) *
+            </label>
+            <p class="question-hint">(ข้อเสียหรือจุดบกพร่องที่พบจากงานที่ได้ดาวน้อย ซึ่งเราจะไม่ทำตาม?)</p>
+            <textarea id="thingsToAvoidInput" class="form-control" rows="3" placeholder="⚠️ พิมพ์สรุปข้อควรระวังและหลีกเลี่ยง..." required></textarea>
+          </div>
+
+          <!-- ข้อที่ 3: Design Rules 3 ข้อ -->
+          <div class="checklist-question-box mt-3">
+            <label class="question-title text-amber">
+              3. กฎเหล็ก 3 ข้อ (Design Rules) สำหรับการออกแบบของฉัน *
+            </label>
+            
+            <div class="form-group mt-2">
+              <label for="ruleColorInput"><i class="fa-solid fa-palette text-amber me-1"></i> เรื่องการใช้สี / พื้นหลัง:</label>
+              <input type="text" id="ruleColorInput" class="form-control" placeholder="เช่น ใช้สีโทนเย็นคู่กับสีสว่าง ไม่เกิน 3 สี สีตัวอักษรตัดกับพื้นหลัง..." required>
+            </div>
+
+            <div class="form-group mt-2">
+              <label for="ruleFontInput"><i class="fa-solid fa-font text-indigo me-1"></i> เรื่องฟอนต์ / ข้อความ:</label>
+              <input type="text" id="ruleFontInput" class="form-control" placeholder="เช่น ขนาดตัวหนังสืออ่านง่าย จัดหัวข้อใหญ่-ย่อยชัดเจน ไม่ใช้เกิน 2 ฟอนต์..." required>
+            </div>
+
+            <div class="form-group mt-2">
+              <label for="ruleCtaInput"><i class="fa-solid fa-bullseye text-rose me-1"></i> เรื่องจุดสนใจ (Focus & CTA):</label>
+              <input type="text" id="ruleCtaInput" class="form-control" placeholder="เช่น วางจุดเด่นไว้ตรงกลาง หรือใส่ปุ่มนำสายตาสะดุดตา..." required>
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="closeChecklistModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> ส่งแบบสรุปถอดบทเรียน</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Teacher View Student Checklists Records Modal (สำหรับครูตรวจผลงาน K) -->
+  <div id="viewChecklistsModal" class="modal-overlay hidden">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-clipboard-list text-indigo me-2"></i>รายการแบบสรุปถอดบทเรียนของนักเรียน (K Assessment)</h3>
+        <button class="modal-close" onclick="closeViewChecklistsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span id="checklistsCountBadge" class="count-badge">ส่งแล้ว 0 คน</span>
+          <button onclick="exportChecklistsCSV()" class="btn btn-sm btn-success">
+            <i class="fa-solid fa-file-excel me-1"></i> Export ข้อมูลสรุปถอดบทเรียน (CSV)
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>นักเรียน</th>
+                <th>ชั้น/เลขที่</th>
+                <th>ข้อดี (Best Practices)</th>
+                <th>ข้อควรระวัง (Things to Avoid)</th>
+                <th>กฎเหล็ก 3 ข้อ (สี/ฟอนต์/CTA)</th>
+                <th>วันที่ส่ง</th>
+                <th>ลบ</th>
+              </tr>
+            </thead>
+            <tbody id="checklistsTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeViewChecklistsModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Media Preview Modal -->
+  <div id="mediaViewerModal" class="modal-overlay hidden">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <h3 id="viewerTitle">ชื่อสื่อการเรียนรู้</h3>
+        <button class="modal-close" onclick="closeViewerModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="viewerContentContainer" class="viewer-content">
+          <!-- Dynamic Content -->
+        </div>
+        <div class="viewer-meta mt-4">
+          <div class="meta-row">
+            <span id="viewerCategoryBadge" class="badge">หมวดหมู่</span>
+            <span id="viewerYearBadge" class="badge badge-light">ปีการศึกษา</span>
+          </div>
+          <p id="viewerDescription" class="mt-2 text-muted"></p>
+          <div id="viewerTags" class="tags-wrapper mt-2"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="viewerExternalLink" href="#" target="_blank" class="btn btn-outline">
+          <i class="fa-solid fa-up-right-from-square me-1"></i> เปิดในหน้าต่างใหม่
+        </a>
+        <button id="viewerRateBtn" class="btn btn-primary">
+          <i class="fa-solid fa-star me-1"></i> ประเมินสื่อนี้
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Interactive Star Rating & Reflection Modal -->
+  <div id="ratingModal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <h3>ประเมินและถอดบทเรียนสื่อต้นแบบ</h3>
+          <p id="ratingMediaTitle" class="modal-subtitle">ชื่อสื่อการเรียนรู้</p>
+        </div>
+        <button class="modal-close" onclick="closeRatingModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <form id="ratingForm" onsubmit="handleRatingSubmit(event)">
+          <input type="hidden" id="ratingMediaId">
+
+          <!-- 3-Dimension Rating Sliders/Stars -->
+          <div class="rating-dimension">
+            <div class="dimension-header">
+              <label><i class="fa-solid fa-font text-indigo me-1"></i> 1. Readability (ความอ่านง่ายและโครงสร้างภาษา)</label>
+              <span id="readabilityValue" class="rating-val-badge">5.0</span>
+            </div>
+            <p class="dimension-hint">ตัวหนังสืออ่านง่าย สีอักษรตัดกับพื้นหลัง จัดวางขนาดและหัวข้อชัดเจน</p>
+            <div class="star-rating-selector" data-dimension="readability">
+              <i class="fa-solid fa-star star-btn active" data-score="1"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="2"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="3"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="4"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="5"></i>
+            </div>
+          </div>
+
+          <div class="rating-dimension mt-3">
+            <div class="dimension-header">
+              <label><i class="fa-solid fa-palette text-amber me-1"></i> 2. Visual Harmony (ความสวยงามและกลมกลืนของสี/ภาพ)</label>
+              <span id="visualHarmonyValue" class="rating-val-badge">5.0</span>
+            </div>
+            <p class="dimension-hint">ใช้จับคู่โทนสีได้เหมาะสม สื่อภาพประกอบสมดุลและเข้ากันกับเนื้อหา</p>
+            <div class="star-rating-selector" data-dimension="visualHarmony">
+              <i class="fa-solid fa-star star-btn active" data-score="1"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="2"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="3"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="4"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="5"></i>
+            </div>
+          </div>
+
+          <div class="rating-dimension mt-3">
+            <div class="dimension-header">
+              <label><i class="fa-solid fa-bullseye text-rose me-1"></i> 3. Focus & CTA (จุดสนใจและการนำสายตา)</label>
+              <span id="focusCtaValue" class="rating-val-badge">5.0</span>
+            </div>
+            <p class="dimension-hint">มีจุดเด่นดึงดูดสายตาชัดเจน ปุ่มหรือสัญลักษณ์นำสายตาหาง่าย</p>
+            <div class="star-rating-selector" data-dimension="focusCta">
+              <i class="fa-solid fa-star star-btn active" data-score="1"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="2"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="3"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="4"></i>
+              <i class="fa-solid fa-star star-btn active" data-score="5"></i>
+            </div>
+          </div>
+
+          <!-- Overall Score Live Preview -->
+          <div class="rating-summary-box mt-4">
+            <span>คะแนนรวมเฉลี่ยของคุณ:</span>
+            <span id="liveAvgRating" class="rating-score-highlight">5.0</span> / 5.0
+          </div>
+
+          <!-- Student Reflection Input -->
+          <div class="form-group mt-3">
+            <label for="reflectionText"><i class="fa-solid fa-pen-to-square text-cyan me-1"></i> ข้อคิดเห็นถอดบทเรียนจากสื่อนี้:</label>
+            <textarea id="reflectionText" rows="3" class="form-control" placeholder="พิมพ์ข้อคิดเห็นหรือแนวคิดจากสื่อนี้..."></textarea>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="closeRatingModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> บันทึกผลการประเมิน</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Rubric & Criteria Helper Modal -->
+  <div id="rubricModal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-book-bookmark text-indigo me-2"></i>เกณฑ์การประเมินสื่อต้นแบบ 3 มิติ</h3>
+        <button class="modal-close" onclick="closeRubricModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 text-muted">เกณฑ์ที่ผู้เรียนใช้ประเมินผลงานดิจิทัลต้นแบบ เพื่อฝึกทักษะการถอดบทเรียนและการออกแบบสื่ออย่างมืออาชีพ:</p>
+
+        <div class="rubric-card">
+          <div class="rubric-icon icon-indigo"><i class="fa-solid fa-font"></i></div>
+          <div class="rubric-detail">
+            <h4>1. Readability (ความอ่านง่ายและโครงสร้างภาษา)</h4>
+            <ul>
+              <li><strong>5 ดาว:</strong> ตัวอักษรขนาดพอดี อ่านง่ายชัดเจน สีตัวอักษรตัดกับพื้นหลังอย่างเห็นได้ชัด</li>
+              <li><strong>3-4 ดาว:</strong> อ่านได้ค่อนข้างง่าย มีการเว้นวรรคและจัดลำดับหัวข้อดี</li>
+              <li><strong>1-2 ดาว:</strong> ตัวหนังสือเล็กเกินไป สีกลืนกับพื้นหลัง หรือจัดวางแน่นเกินไป</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="rubric-card mt-3">
+          <div class="rubric-icon icon-amber"><i class="fa-solid fa-palette"></i></div>
+          <div class="rubric-detail">
+            <h4>2. Visual Harmony (ความสวยงามและกลมกลืน)</h4>
+            <ul>
+              <li><strong>5 ดาว:</strong> ใช้โทนสีสอดคล้องกัน (Color Palette) รูปภาพคมชัดและจัดวางสมดุล</li>
+              <li><strong>3-4 ดาว:</strong> ภาพสวยงาม ใช้สีฉูดฉาดเล็กน้อยแต่ยังคงดูสบายตา</li>
+              <li><strong>1-2 ดาว:</strong> ใช้สีหลากสีปนกันจนขัดตา หรือภาพแตกไม่คมชัด</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="rubric-card mt-3">
+          <div class="rubric-icon icon-rose"><i class="fa-solid fa-bullseye"></i></div>
+          <div class="rubric-detail">
+            <h4>3. Focus & CTA (จุดสนใจและการนำสายตา)</h4>
+            <ul>
+              <li><strong>5 ดาว:</strong> มีจุดสนใจหลัก (Focus Point) ชัดเจน ปุ่มหรือสัญลักษณ์สะดุดตา</li>
+              <li><strong>3-4 ดาว:</strong> ค้นหาจุดสำคัญได้ไม่ยาก มีหัวข้อหรือสัญลักษณ์นำสายตา</li>
+              <li><strong>1-2 ดาว:</strong> ข้อมูลกระจัดกระจาย ไม่รู้ว่าจุดสำคัญของสื่ออยู่ตรงไหน</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeRubricModal()">รับทราบและเข้าใจแล้ว</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Admin Auth Login Modal -->
+  <div id="adminLoginModal" class="modal-overlay hidden">
+    <div class="modal-container modal-sm">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-lock text-indigo me-2"></i>เข้าสู่ระบบผู้ดูแล (ครู)</h3>
+        <button class="modal-close" onclick="closeAdminLoginModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+          <div class="form-group">
+            <label for="adminPassword">กรอกรหัสผ่านเข้าใช้งาน:</label>
+            <input type="password" id="adminPassword" class="form-control" placeholder="กรอกรหัสผ่านผู้ดูแลระบบ" required autocomplete="current-password">
+          </div>
+          <div id="adminLoginError" class="alert alert-danger mt-3 hidden">
+            <i class="fa-solid fa-circle-exclamation me-1"></i> รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+          </div>
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="closeAdminLoginModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-key me-1"></i> เข้าสู่ระบบ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Add / Edit Media Form Modal (For Admin) -->
+  <div id="addEditMediaModal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="addEditModalTitle"><i class="fa-solid fa-folder-plus text-indigo me-2"></i>เพิ่มสื่อการเรียนรู้ใหม่</h3>
+        <button class="modal-close" onclick="closeAddEditModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="mediaForm" onsubmit="handleSaveMedia(event)">
+          <input type="hidden" id="editMediaId">
+
+          <div class="form-group mb-3">
+            <label for="formTitle">ชื่อสื่อ / ผลงานต้นแบบ *</label>
+            <input type="text" id="formTitle" class="form-control" placeholder="เช่น เว็บไซต์ผลงานพอร์ตโฟลิโอ" required>
+          </div>
+
+          <div class="form-row mb-3">
+            <div class="form-group col-6">
+              <label for="formCategory">ประเภทสื่อ *</label>
+              <select id="formCategory" class="form-control" required>
+                <!-- Dynamically populated by app.js from Categories list -->
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label for="formAcademicYear">ปีการศึกษา *</label>
+              <input type="text" id="formAcademicYear" class="form-control" value="2567" required>
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="formUrl">ลิงก์ URL สื่อการเรียนรู้ / ลิงก์ YouTube *</label>
+            <input type="url" id="formUrl" class="form-control" placeholder="https://... หรือ https://www.youtube.com/watch?v=..." required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="formThumbnail">ลิงก์รูปภาพ Thumbnail (พรีวิว)</label>
+            <input type="url" id="formThumbnail" class="form-control" placeholder="https://images.unsplash.com/... (หากเว้นว่าง ระบบจะสุ่มภาพตามหมวดหมู่ให้)">
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="formTags">แท็กหมวดหมู่ (แยกด้วยเครื่องหมายจุลภาค ,)</label>
+            <input type="text" id="formTags" class="form-control" placeholder="เช่น HTML5, CSS Grid, UX-UI">
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="formDescription">คำอธิบายรายละเอียดสื่อ</label>
+            <textarea id="formDescription" class="form-control" rows="3" placeholder="อธิบายจุดเด่นหรือวัตถุประสงค์ของสื่อต้นแบบชิ้นนี้..."></textarea>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="closeAddEditModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> บันทึกข้อมูลสื่อ</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Manage Categories Modal (For Admin) -->
+  <div id="manageCategoriesModal" class="modal-overlay hidden">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-tags text-indigo me-2"></i>จัดการหมวดหมู่สื่อการเรียนรู้</h3>
+        <button class="modal-close" onclick="closeManageCategoriesModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form Add Category -->
+        <form id="addCategoryForm" onsubmit="handleAddCategory(event)" class="add-cat-form mb-4">
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="catNameInput">ชื่อหมวดหมู่ใหม่ *</label>
+              <input type="text" id="catNameInput" class="form-control" placeholder="เช่น สื่ออินโฟกราฟิก" required>
+            </div>
+            <div class="form-group col-6">
+              <label for="catIconInput">ไอคอน FontAwesome</label>
+              <select id="catIconInput" class="form-control">
+                <option value="fa-globe">🌐 fa-globe (เว็บไซต์)</option>
+                <option value="fa-image">🖼️ fa-image (รูปภาพ)</option>
+                <option value="fa-play">▶️ fa-play (วิดีโอ)</option>
+                <option value="fa-file-lines">📄 fa-file-lines (เอกสาร)</option>
+                <option value="fa-cubes">🧊 fa-cubes (สื่อ 3D)</option>
+                <option value="fa-chart-pie">📊 fa-chart-pie (กราฟ/สถิติ)</option>
+                <option value="fa-code">💻 fa-code (โค้ด/โปรแกรม)</option>
+                <option value="fa-bookmark">🔖 fa-bookmark (ทั่วไป)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm mt-2">
+            <i class="fa-solid fa-plus me-1"></i> เพิ่มหมวดหมู่นี้
+          </button>
+        </form>
+
+        <!-- Categories Table -->
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>ไอคอน</th>
+                <th>ชื่อหมวดหมู่</th>
+                <th>รหัสประเภท</th>
+                <th>การจัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="categoriesTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeManageCategoriesModal()">เสร็จสิ้น</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Application Logic JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
