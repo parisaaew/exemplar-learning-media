@@ -143,6 +143,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+  // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
+  isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
+
+  // 2. Load Categories
   const storedCategories = localStorage.getItem(STORAGE_KEY_CATEGORIES);
   if (storedCategories) {
     try { categoriesList = JSON.parse(storedCategories); } catch (e) { categoriesList = [...INITIAL_CATEGORIES]; }
@@ -157,6 +161,42 @@ function initApp() {
     saveCategoriesToStorage();
   }
 
+  // 3. Load Media Data (เรียกดึงข้อมูลสดจาก Cloudflare D1 Database API หากมี)
+  fetch('/api/media')
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        mediaList = data;
+        saveMediaToStorage();
+        renderApp();
+      } else {
+        loadMediaLocalFallback();
+      }
+    })
+    .catch(() => {
+      loadMediaLocalFallback();
+    });
+
+  // 4. Load Student Checklists Data
+  fetch('/api/checklists')
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        checklistsList = data;
+        saveChecklistsToStorage();
+        renderApp();
+      } else {
+        loadChecklistsLocalFallback();
+      }
+    })
+    .catch(() => {
+      loadChecklistsLocalFallback();
+    });
+
+  renderApp();
+}
+
+function loadMediaLocalFallback() {
   const storedMedia = localStorage.getItem(STORAGE_KEY_MEDIA);
   if (storedMedia) {
     try { mediaList = JSON.parse(storedMedia); } catch (e) { mediaList = [...INITIAL_MEDIA_DATA]; }
@@ -164,7 +204,10 @@ function initApp() {
     mediaList = [...INITIAL_MEDIA_DATA];
     saveMediaToStorage();
   }
+  renderApp();
+}
 
+function loadChecklistsLocalFallback() {
   const storedChecklists = localStorage.getItem(STORAGE_KEY_CHECKLISTS);
   if (storedChecklists) {
     try { checklistsList = JSON.parse(storedChecklists); } catch (e) { checklistsList = [...INITIAL_CHECKLISTS_DATA]; }
@@ -172,7 +215,6 @@ function initApp() {
     checklistsList = [...INITIAL_CHECKLISTS_DATA];
     saveChecklistsToStorage();
   }
-
   renderApp();
 }
 
@@ -430,6 +472,14 @@ function handleStudentBannerSubmit(e) {
 
   mediaList.unshift(newBannerItem);
   saveMediaToStorage();
+
+  // ส่งบันทึกตรงเข้า Cloudflare D1 Database API เพื่อให้ทุกเบราว์เซอร์เห็นตรงกันทันที
+  fetch('/api/media', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newBannerItem)
+  }).catch(err => console.error('Cloudflare D1 sync error:', err));
+
   closeSubmitBannerModal();
   
   // Switch category filter to show student banners
@@ -608,6 +658,14 @@ function handleChecklistSubmit(e) {
 
   checklistsList.unshift(newChecklist);
   saveChecklistsToStorage();
+
+  // ส่งบันทึกตรงเข้า Cloudflare D1 Database API
+  fetch('/api/checklists', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newChecklist)
+  }).catch(err => console.error('Cloudflare D1 sync error:', err));
+
   closeChecklistModal();
   renderApp();
 
@@ -878,6 +936,7 @@ function handleAdminLogin(e) {
 
   if (pwd === ADMIN_PASSCODE) {
     isAdminLoggedIn = true;
+    sessionStorage.setItem('exemplar_admin_logged_in', 'true');
     closeAdminLoginModal();
     renderApp();
     showToast('เข้าสู่โหมดผู้ดูแลระบบ (Admin Mode) สำเร็จ');
@@ -888,6 +947,7 @@ function handleAdminLogin(e) {
 
 function exitAdminMode() {
   isAdminLoggedIn = false;
+  sessionStorage.removeItem('exemplar_admin_logged_in');
   renderApp();
   showToast('ออกจากโหมดผู้ดูแลระบบเรียบร้อยแล้ว');
 }
