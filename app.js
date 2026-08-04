@@ -171,13 +171,16 @@ function initApp() {
   renderApp();
 }
 
+const deletedMediaIds = new Set();
+const deletedChecklistIds = new Set();
+
 function fetchLiveDataFromD1() {
   // 1. ดึงรายการสื่อสดจาก Cloudflare D1
   fetch(getApiUrl('/media'))
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data;
+        mediaList = data.filter(m => !deletedMediaIds.has(m.id));
         renderApp();
       }
     })
@@ -199,7 +202,7 @@ function fetchLiveDataFromD1() {
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        checklistsList = data;
+        checklistsList = data.filter(c => !deletedChecklistIds.has(c.id));
         renderApp();
       }
     })
@@ -809,6 +812,7 @@ function deleteChecklist(chkId) {
   if (!item) return;
 
   if (confirm(`ต้องการลบผลสรุปของนักเรียน "${item.name}" หรือไม่?`)) {
+    deletedChecklistIds.add(chkId);
     checklistsList = checklistsList.filter(c => c.id !== chkId);
     saveChecklistsToStorage();
 
@@ -1282,7 +1286,9 @@ async function confirmDeleteMedia(mediaId) {
   if (!item) return;
 
   if (confirm(`คุณต้องการลบสื่อ "${item.title}" ออกจากระบบคลังสื่อหรือไม่?`)) {
+    deletedMediaIds.add(mediaId);
     mediaList = mediaList.filter(m => m.id !== mediaId);
+    saveMediaToStorage();
     renderApp();
 
     try {
