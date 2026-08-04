@@ -156,48 +156,48 @@ function initApp() {
     try { categoriesList = JSON.parse(storedCategories); } catch (e) { categoriesList = [...INITIAL_CATEGORIES]; }
   } else {
     categoriesList = [...INITIAL_CATEGORIES];
-    saveCategoriesToStorage();
   }
 
   // Ensure 'student-banner' category exists
   if (!categoriesList.some(c => c.id === 'student-banner')) {
     categoriesList.push({ id: 'student-banner', name: 'ผลงานแบนเนอร์นักเรียน', icon: 'fa-user-astronaut', badgeClass: 'badge-banner' });
-    saveCategoriesToStorage();
   }
 
-  // 3. Load Media Data (เรียกดึงข้อมูลสดจาก Cloudflare D1 Database API)
+  // 3. ล้างความจำ LocalStorage เก่าทิ้ง เพื่อบังคับให้ทุกเบราว์เซอร์อ่านตรงจาก Cloudflare D1 Database 100%
+  localStorage.removeItem(STORAGE_KEY_MEDIA);
+  localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
+
+  // 4. ดึงข้อมูลสดจาก Cloudflare D1 Database
+  fetchLiveDataFromD1();
+
+  // 5. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลใหม่จาก D1 Database ทุก 5 วินาทีอัตโนมัติ
+  setInterval(fetchLiveDataFromD1, 5000);
+
+  renderApp();
+}
+
+function fetchLiveDataFromD1() {
+  // ดึงรายการสื่อสดจาก Cloudflare D1
   fetch(getApiUrl('/media'))
     .then(res => res.json())
     .then(data => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         mediaList = data;
-        saveMediaToStorage();
         renderApp();
-      } else {
-        loadMediaLocalFallback();
       }
     })
-    .catch(() => {
-      loadMediaLocalFallback();
-    });
+    .catch(err => console.error('D1 Media Fetch Error:', err));
 
-  // 4. Load Student Checklists Data
+  // ดึงสรุปบทเรียนสดจาก Cloudflare D1
   fetch(getApiUrl('/checklists'))
     .then(res => res.json())
     .then(data => {
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         checklistsList = data;
-        saveChecklistsToStorage();
         renderApp();
-      } else {
-        loadChecklistsLocalFallback();
       }
     })
-    .catch(() => {
-      loadChecklistsLocalFallback();
-    });
-
-  renderApp();
+    .catch(err => console.error('D1 Checklists Fetch Error:', err));
 }
 
 function loadMediaLocalFallback() {
