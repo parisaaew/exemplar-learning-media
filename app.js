@@ -761,16 +761,24 @@ function renderChecklistsTable() {
 
   let html = '';
   checklistsList.forEach(item => {
+    const studentClass = item.studentClass || item.student_class || '';
+    const studentNo = item.studentNo || item.student_no || '';
+    const bestPractices = item.bestPractices || item.best_practices || '';
+    const thingsToAvoid = item.thingsToAvoid || item.things_to_avoid || '';
+    const ruleColor = item.ruleColor || item.rule_color || '';
+    const ruleFont = item.ruleFont || item.rule_font || '';
+    const ruleCta = item.ruleCta || item.rule_cta || '';
+
     html += `
       <tr>
         <td><strong>${escapeHtml(item.name)}</strong></td>
-        <td><span class="badge badge-light">${escapeHtml(item.studentClass)} / เลขที่ ${escapeHtml(item.studentNo)}</span></td>
-        <td style="max-width: 200px;"><small>${escapeHtml(item.bestPractices)}</small></td>
-        <td style="max-width: 200px;"><small class="text-rose">${escapeHtml(item.thingsToAvoid)}</small></td>
+        <td><span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span></td>
+        <td style="max-width: 200px;"><small>${escapeHtml(bestPractices)}</small></td>
+        <td style="max-width: 200px;"><small class="text-rose">${escapeHtml(thingsToAvoid)}</small></td>
         <td style="max-width: 220px;">
-          <small class="d-block">🎨 <strong>สี:</strong> ${escapeHtml(item.ruleColor)}</small>
-          <small class="d-block">🔤 <strong>ฟอนต์:</strong> ${escapeHtml(item.ruleFont)}</small>
-          <small class="d-block">🎯 <strong>CTA:</strong> ${escapeHtml(item.ruleCta)}</small>
+          <small class="d-block">🎨 <strong>สี:</strong> ${escapeHtml(ruleColor)}</small>
+          <small class="d-block">🔤 <strong>ฟอนต์:</strong> ${escapeHtml(ruleFont)}</small>
+          <small class="d-block">🎯 <strong>CTA:</strong> ${escapeHtml(ruleCta)}</small>
         </td>
         <td><small class="text-muted">${item.timestamp || '-'}</small></td>
         <td>
@@ -813,11 +821,19 @@ function exportChecklistsCSV() {
   csvContent += 'ID,ชื่อ-นามสกุล,ชั้น,เลขที่,ข้อดี(Best Practices),ข้อควรระวัง(Things to Avoid),กฎเหล็กเรื่องสี,กฎเหล็กเรื่องฟอนต์,กฎเหล็กเรื่องCTA,วันที่ส่ง\n';
 
   checklistsList.forEach(item => {
+    const studentClass = item.studentClass || item.student_class || '';
+    const studentNo = item.studentNo || item.student_no || '';
+    const bestPractices = item.bestPractices || item.best_practices || '';
+    const thingsToAvoid = item.thingsToAvoid || item.things_to_avoid || '';
+    const ruleColor = item.ruleColor || item.rule_color || '';
+    const ruleFont = item.ruleFont || item.rule_font || '';
+    const ruleCta = item.ruleCta || item.rule_cta || '';
+
     const safeName = `"${(item.name || '').replace(/"/g, '""')}"`;
-    const safeClass = `"${(item.studentClass || '').replace(/"/g, '""')}"`;
-    const safeBest = `"${(item.bestPractices || '').replace(/"/g, '""')}"`;
-    const safeAvoid = `"${(item.thingsToAvoid || '').replace(/"/g, '""')}"`;
-    const safeColor = `"${(item.ruleColor || '').replace(/"/g, '""')}"`;
+    const safeClass = `"${(studentClass || '').replace(/"/g, '""')}"`;
+    const safeBest = `"${(bestPractices || '').replace(/"/g, '""')}"`;
+    const safeAvoid = `"${(thingsToAvoid || '').replace(/"/g, '""')}"`;
+    const safeColor = `"${(ruleColor || '').replace(/"/g, '""')}"`;
     const safeFont = `"${(item.ruleFont || '').replace(/"/g, '""')}"`;
     const safeCta = `"${(item.ruleCta || '').replace(/"/g, '""')}"`;
 

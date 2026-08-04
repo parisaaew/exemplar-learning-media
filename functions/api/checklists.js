@@ -17,7 +17,22 @@ export async function onRequestGet(context) {
 
   try {
     const { results } = await env.DB.prepare('SELECT * FROM student_checklists ORDER BY timestamp DESC').all();
-    return new Response(JSON.stringify(results || []), {
+    
+    // แปลงรูปแบบคีย์ให้รองรับทั้ง camelCase และ snake_case 100%
+    const formatted = (results || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      studentClass: item.student_class || item.studentClass || '',
+      studentNo: item.student_no || item.studentNo || '',
+      bestPractices: item.best_practices || item.bestPractices || '',
+      thingsToAvoid: item.things_to_avoid || item.thingsToAvoid || '',
+      ruleColor: item.rule_color || item.ruleColor || '',
+      ruleFont: item.rule_font || item.ruleFont || '',
+      ruleCta: item.rule_cta || item.ruleCta || '',
+      timestamp: item.timestamp || ''
+    }));
+
+    return new Response(JSON.stringify(formatted), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
     });
   } catch (err) {
@@ -45,14 +60,14 @@ export async function onRequestPost(context) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       body.id || 'chk-' + Date.now(),
-      body.name,
-      body.studentClass,
-      body.studentNo,
-      body.bestPractices,
-      body.thingsToAvoid,
-      body.ruleColor,
-      body.ruleFont,
-      body.ruleCta,
+      body.name || '',
+      body.studentClass || body.student_class || '',
+      body.studentNo || body.student_no || '',
+      body.bestPractices || body.best_practices || '',
+      body.thingsToAvoid || body.things_to_avoid || '',
+      body.ruleColor || body.rule_color || '',
+      body.ruleFont || body.rule_font || '',
+      body.ruleCta || body.rule_cta || '',
       body.timestamp || new Date().toISOString().split('T')[0]
     ).run();
 
