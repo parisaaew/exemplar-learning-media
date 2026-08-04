@@ -185,38 +185,41 @@ function fetchLiveDataFromD1() {
   const deletedMedia = getDeletedMediaIds();
   const deletedChecklists = getDeletedChecklistIds();
 
-  // 1. ดึงรายการสื่อสดจาก Cloudflare D1 (แนบ ?_t=Timestamp และกรองสื่อที่ถูกสั่งลบออกถาวร)
-  fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' })
-    .then(res => res.json())
-    .then(data => {
-      if (Array.isArray(data)) {
-        mediaList = data.filter(m => !deletedMedia.has(m.id));
-        renderApp();
-      }
-    })
-    .catch(err => console.error('D1 Media Fetch Error:', err));
+  Promise.all([
+    fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+  ]).then(([mediaData, categoriesData, checklistsData]) => {
+    let hasChanged = false;
 
-  // 2. ดึงหมวดหมู่สื่อสดจาก Cloudflare D1
-  fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' })
-    .then(res => res.json())
-    .then(data => {
-      if (Array.isArray(data) && data.length > 0) {
-        categoriesList = data;
-        renderApp();
+    if (Array.isArray(mediaData)) {
+      const filtered = mediaData.filter(m => !deletedMedia.has(m.id));
+      if (JSON.stringify(filtered) !== JSON.stringify(mediaList)) {
+        mediaList = filtered;
+        hasChanged = true;
       }
-    })
-    .catch(err => console.error('D1 Categories Fetch Error:', err));
+    }
 
-  // 3. ดึงสรุปบทเรียนสดจาก Cloudflare D1
-  fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' })
-    .then(res => res.json())
-    .then(data => {
-      if (Array.isArray(data)) {
-        checklistsList = data.filter(c => !deletedChecklists.has(c.id));
-        renderApp();
+    if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+      if (JSON.stringify(categoriesData) !== JSON.stringify(categoriesList)) {
+        categoriesList = categoriesData;
+        hasChanged = true;
       }
-    })
-    .catch(err => console.error('D1 Checklists Fetch Error:', err));
+    }
+
+    if (Array.isArray(checklistsData)) {
+      const filtered = checklistsData.filter(c => !deletedChecklists.has(c.id));
+      if (JSON.stringify(filtered) !== JSON.stringify(checklistsList)) {
+        checklistsList = filtered;
+        hasChanged = true;
+      }
+    }
+
+    // วาดภาพหน้าจอใหม่เฉพาะเมื่อมีข้อมูลเปลี่ยนแปลงจริง ป้องกันหน้าจอกระพริบ 100%
+    if (hasChanged) {
+      renderApp();
+    }
+  });
 }
 
 function loadMediaLocalFallback() {
