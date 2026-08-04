@@ -31,7 +31,14 @@ export async function onRequest(context) {
 
   try {
     // -------------------------------------------------------------
-    // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database (ห้ามจำแคชทุกกรณี)
+    // ล้างข้อมูลขยะทดสอบออกจาก D1 Database อัตโนมัติ (กหผด, ดกด, ปี 2569)
+    // -------------------------------------------------------------
+    try {
+      await env.DB.prepare("DELETE FROM media_items WHERE title LIKE '%กหผด%' OR title LIKE '%ดกด%' OR academic_year = '2569'").run();
+    } catch (e) {}
+
+    // -------------------------------------------------------------
+    // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database
     // -------------------------------------------------------------
     if (method === 'GET') {
       const { results: mediaRows } = await env.DB.prepare('SELECT * FROM media_items ORDER BY created_at DESC').all();
@@ -64,10 +71,17 @@ export async function onRequest(context) {
     }
 
     // -------------------------------------------------------------
-    // POST: เพิ่ม/อัปเดต หรือลบสื่อ (รองรับ action: delete)
+    // POST: เพิ่ม/อัปเดต หรือลบสื่อ (รองรับ action: delete และ purge_test_items)
     // -------------------------------------------------------------
     if (method === 'POST') {
       const body = await request.json();
+
+      if (body.action === 'purge_test_items') {
+        await env.DB.prepare("DELETE FROM media_items WHERE title LIKE '%กหผด%' OR title LIKE '%ดกด%' OR academic_year = '2569'").run();
+        return new Response(JSON.stringify({ success: true, message: 'ล้างสื่อทดสอบออกจาก D1 Database เรียบร้อยแล้ว' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
 
       if (body.action === 'delete') {
         const targetId = body.id || '';
