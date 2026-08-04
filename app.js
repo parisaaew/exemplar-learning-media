@@ -10,10 +10,14 @@ const STORAGE_KEY_CHECKLISTS = 'exemplar_checklists_v1';
 const ADMIN_PASSCODE = 'admin121314';
 
 // Cloudflare Integration Ready Config
-const CLOUDFLARE_CONFIG = {
-  enabled: false,
-  apiBaseUrl: 'https://your-worker-subdomain.workers.dev/api'
-};
+const WORKER_API_BASE = 'https://exemplar-learning-media.parisa-aew.workers.dev/api';
+
+function getApiUrl(path) {
+  if (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('github.io') || window.location.protocol === 'file:' || !window.location.hostname.includes('workers.dev')) {
+    return WORKER_API_BASE + path;
+  }
+  return '/api' + path;
+}
 
 // หมวดหมู่เริ่มต้น
 const INITIAL_CATEGORIES = [
@@ -161,8 +165,8 @@ function initApp() {
     saveCategoriesToStorage();
   }
 
-  // 3. Load Media Data (เรียกดึงข้อมูลสดจาก Cloudflare D1 Database API หากมี)
-  fetch('/api/media')
+  // 3. Load Media Data (เรียกดึงข้อมูลสดจาก Cloudflare D1 Database API)
+  fetch(getApiUrl('/media'))
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
@@ -178,7 +182,7 @@ function initApp() {
     });
 
   // 4. Load Student Checklists Data
-  fetch('/api/checklists')
+  fetch(getApiUrl('/checklists'))
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
@@ -470,23 +474,38 @@ function handleStudentBannerSubmit(e) {
     ratings: []
   };
 
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังส่งผลงานเข้า D1 Database...';
+  }
+
   mediaList.unshift(newBannerItem);
   saveMediaToStorage();
 
-  // ส่งบันทึกตรงเข้า Cloudflare D1 Database API เพื่อให้ทุกเบราว์เซอร์เห็นตรงกันทันที
-  fetch('/api/media', {
+  // ส่งบันทึกตรงเข้า Cloudflare D1 Database API
+  fetch(getApiUrl('/media'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(newBannerItem)
-  }).catch(err => console.error('Cloudflare D1 sync error:', err));
-
-  closeSubmitBannerModal();
-  
-  // Switch category filter to show student banners
-  activeCategory = 'student-banner';
-  renderApp();
-
-  showToast(`ส่งผลงานแบนเนอร์ของ ${name} (ปีการศึกษา ${academicYear}) เข้าสู่คลังสื่อเรียบร้อยแล้ว!`);
+  })
+  .then(res => res.json())
+  .then(() => {
+    // Refresh live list from D1
+    fetch(getApiUrl('/media')).then(r => r.json()).then(d => { if (Array.isArray(d)) mediaList = d; renderApp(); });
+  })
+  .catch(err => console.error('Cloudflare D1 sync error:', err))
+  .finally(() => {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
+    closeSubmitBannerModal();
+    activeCategory = 'student-banner';
+    renderApp();
+    showToast(`ส่งผลงานแบนเนอร์ของ ${name} (ปีการศึกษา ${academicYear}) เข้าสู่คลังสื่อเรียบร้อยแล้ว!`);
+  });
 }
 
 // ==========================================
@@ -656,20 +675,36 @@ function handleChecklistSubmit(e) {
     timestamp: new Date().toISOString().split('T')[0]
   };
 
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังส่งแบบสรุปเข้า D1 Database...';
+  }
+
   checklistsList.unshift(newChecklist);
   saveChecklistsToStorage();
 
   // ส่งบันทึกตรงเข้า Cloudflare D1 Database API
-  fetch('/api/checklists', {
+  fetch(getApiUrl('/checklists'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(newChecklist)
-  }).catch(err => console.error('Cloudflare D1 sync error:', err));
-
-  closeChecklistModal();
-  renderApp();
-
-  showToast(`บันทึกแบบสรุปถอดบทเรียนของ ${name} เรียบร้อยแล้ว!`);
+  })
+  .then(res => res.json())
+  .then(() => {
+    fetch(getApiUrl('/checklists')).then(r => r.json()).then(d => { if (Array.isArray(d)) checklistsList = d; renderApp(); });
+  })
+  .catch(err => console.error('Cloudflare D1 sync error:', err))
+  .finally(() => {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
+    closeChecklistModal();
+    renderApp();
+    showToast(`บันทึกแบบสรุปถอดบทเรียนของ ${name} เรียบร้อยแล้ว!`);
+  });
 }
 
 // ==========================================
@@ -730,7 +765,7 @@ function deleteChecklist(chkId) {
     saveChecklistsToStorage();
 
     // ส่งคำสั่งลบไปยัง Cloudflare D1 Database
-    fetch(`/api/checklists?id=${encodeURIComponent(chkId)}`, { method: 'DELETE' })
+    fetch(getApiUrl(`/checklists?id=${encodeURIComponent(chkId)}`), { method: 'DELETE' })
       .catch(err => console.error('Cloudflare D1 delete error:', err));
 
     renderChecklistsTable();
@@ -851,7 +886,7 @@ function handleRatingSubmit(e) {
   saveMediaToStorage();
 
   // ส่งข้อมูลคะแนนดาวเข้า Cloudflare D1 Database API
-  fetch('/api/ratings', {
+  fetch(getApiUrl('/ratings'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1138,7 +1173,7 @@ function handleSaveMedia(e) {
       item.description = description;
 
       // ส่งอัปเดตเข้า Cloudflare D1 Database
-      fetch('/api/media', {
+      fetch(getApiUrl('/media'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item)
@@ -1161,7 +1196,7 @@ function handleSaveMedia(e) {
     mediaList.unshift(newItem);
 
     // ส่งบันทึกสื่อใหม่เข้า Cloudflare D1 Database
-    fetch('/api/media', {
+    fetch(getApiUrl('/media'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newItem)
@@ -1184,7 +1219,7 @@ function confirmDeleteMedia(mediaId) {
     saveMediaToStorage();
 
     // ส่งคำสั่งลบสื่อไปยัง Cloudflare D1 Database
-    fetch(`/api/media?id=${encodeURIComponent(mediaId)}`, { method: 'DELETE' })
+    fetch(getApiUrl(`/media?id=${encodeURIComponent(mediaId)}`), { method: 'DELETE' })
       .catch(err => console.error('Cloudflare D1 delete error:', err));
 
     renderApp();
