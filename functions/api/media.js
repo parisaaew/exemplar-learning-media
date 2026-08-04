@@ -71,8 +71,9 @@ export async function onRequest(context) {
 
       if (body.action === 'delete') {
         const targetId = body.id || '';
-        const decodedId = decodeURIComponent(targetId).trim();
-        const targetTitle = body.title || '';
+        let decodedId = targetId;
+        try { decodedId = decodeURIComponent(targetId).trim(); } catch(e) {}
+        const targetTitle = (body.title || '').trim();
 
         if (targetId || targetTitle) {
           await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ? OR (title = ? AND title != "")')
@@ -122,7 +123,9 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: 'Missing media ID' }), { status: 400, headers: corsHeaders });
       }
 
-      const decodedId = decodeURIComponent(targetId).trim();
+      let decodedId = targetId;
+      try { decodedId = decodeURIComponent(targetId).trim(); } catch(e) {}
+
       await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ?').bind(targetId, decodedId).run();
       await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?').bind(targetId, decodedId).run();
 

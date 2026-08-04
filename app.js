@@ -182,13 +182,15 @@ function initApp() {
 
 function fetchLiveDataFromD1() {
   const ts = Date.now();
+  const deletedMedia = getDeletedMediaIds();
+  const deletedChecklists = getDeletedChecklistIds();
 
-  // 1. ดึงรายการสื่อสดจาก Cloudflare D1 (แนบ ?_t=Timestamp บังคับ Chrome/Firefox/Edge ปล่อยแคชเก่า 100%)
+  // 1. ดึงรายการสื่อสดจาก Cloudflare D1 (แนบ ?_t=Timestamp และกรองสื่อที่ถูกสั่งลบออกถาวร)
   fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data;
+        mediaList = data.filter(m => !deletedMedia.has(m.id));
         renderApp();
       }
     })
@@ -210,7 +212,7 @@ function fetchLiveDataFromD1() {
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        checklistsList = data;
+        checklistsList = data.filter(c => !deletedChecklists.has(c.id));
         renderApp();
       }
     })
@@ -1307,12 +1309,13 @@ async function confirmDeleteMedia(e, mediaId) {
 
   if (!confirm(`คุณต้องการลบสื่อ "${title || 'นี้'}" ออกจากระบบคลังสื่อหรือไม่?`)) return;
 
-  // 1. ลบจากความจำหน้าจอทันที
+  // 1. ซ่อนถาวรบนหน้าจอและเพิ่มลงในเกราะป้องกันการดึงกลับ
+  markMediaAsDeleted(idToDelete);
   mediaList = mediaList.filter(m => m.id !== idToDelete);
   renderApp();
-  showToast('กำลังลบสื่อออกจากฐานข้อมูล D1 บนคลาวด์...');
+  showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
 
-  // 2. ส่งคำสั่งลบตรงไปยัง Cloudflare D1 Database (แนบทั้ง id และ title)
+  // 2. ส่งคำสั่งลบตรงไปยัง Cloudflare D1 Database (ยิงลบทั้ง ID และ Title)
   try {
     await fetch(getApiUrl('/media'), {
       method: 'POST',
@@ -1320,7 +1323,6 @@ async function confirmDeleteMedia(e, mediaId) {
       body: JSON.stringify({ action: 'delete', id: idToDelete, title: title })
     });
     await fetch(getApiUrl(`/media?id=${encodeURIComponent(idToDelete)}`), { method: 'DELETE' }).catch(() => {});
-    showToast('ลบสื่อการเรียนรู้สำเร็จ สื่อจะหายไปจากทุกเบราว์เซอร์สดๆ ทันที');
   } catch (err) {
     console.error('Cloudflare D1 delete error:', err);
   } finally {
