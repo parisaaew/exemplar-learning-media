@@ -145,70 +145,36 @@ function initApp() {
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
-  // 2. Load Categories
-  const storedCategories = localStorage.getItem(STORAGE_KEY_CATEGORIES);
-  if (storedCategories) {
-    try { categoriesList = JSON.parse(storedCategories); } catch (e) { categoriesList = [...INITIAL_CATEGORIES]; }
-  } else {
-    categoriesList = [...INITIAL_CATEGORIES];
-  }
-
-  // Ensure 'student-banner' category exists
-  if (!categoriesList.some(c => c.id === 'student-banner')) {
-    categoriesList.push({ id: 'student-banner', name: 'ผลงานแบนเนอร์นักเรียน', icon: 'fa-user-astronaut', badgeClass: 'badge-banner' });
-  }
-
-  // 3. ล้างความจำ LocalStorage เก่าทิ้ง เพื่อบังคับให้ทุกเบราว์เซอร์อ่านตรงจาก Cloudflare D1 Database 100%
+  // 2. ล้างความจำแคชเก่าใน LocalStorage ออกทั้งหมด เพื่อให้ทุกเบราว์เซอร์อ่านข้อมูลจาก Cloudflare D1 Database เดียวกัน 100%
   localStorage.removeItem(STORAGE_KEY_MEDIA);
   localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
+  localStorage.removeItem(STORAGE_KEY_CATEGORIES);
+  localStorage.removeItem('exemplar_deleted_media_v1');
+  localStorage.removeItem('exemplar_deleted_checklists_v1');
 
-  // 4. ดึงข้อมูลสดจาก Cloudflare D1 Database
+  // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database
   fetchLiveDataFromD1();
 
-  // 5. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลใหม่จาก D1 Database ทุก 5 วินาทีอัตโนมัติ
-  setInterval(fetchLiveDataFromD1, 5000);
+  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 3 วินาทีอัตโนมัติ
+  setInterval(fetchLiveDataFromD1, 3000);
 
   renderApp();
 }
 
-const STORAGE_KEY_DELETED_MEDIA = 'exemplar_deleted_media_v1';
-const STORAGE_KEY_DELETED_CHECKLISTS = 'exemplar_deleted_checklists_v1';
-
-function getDeletedMediaIds() {
-  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_MEDIA) || '[]')); } catch (e) { return new Set(); }
-}
-function markMediaAsDeleted(id) {
-  const set = getDeletedMediaIds();
-  set.add(id);
-  localStorage.setItem(STORAGE_KEY_DELETED_MEDIA, JSON.stringify(Array.from(set)));
-}
-
-function getDeletedChecklistIds() {
-  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_CHECKLISTS) || '[]')); } catch (e) { return new Set(); }
-}
-function markChecklistAsDeleted(id) {
-  const set = getDeletedChecklistIds();
-  set.add(id);
-  localStorage.setItem(STORAGE_KEY_DELETED_CHECKLISTS, JSON.stringify(Array.from(set)));
-}
-
 function fetchLiveDataFromD1() {
-  const deletedMedia = getDeletedMediaIds();
-  const deletedChecklists = getDeletedChecklistIds();
-
-  // 1. ดึงรายการสื่อสดจาก Cloudflare D1
-  fetch(getApiUrl('/media'))
+  // 1. ดึงรายการสื่อสดจาก Cloudflare D1 (ใส่ cache: no-store บังคับดึงข้อมูลใหม่สดๆ ห้ามจำแคช)
+  fetch(getApiUrl('/media'), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data.filter(m => !deletedMedia.has(m.id));
+        mediaList = data;
         renderApp();
       }
     })
     .catch(err => console.error('D1 Media Fetch Error:', err));
 
   // 2. ดึงหมวดหมู่สื่อสดจาก Cloudflare D1
-  fetch(getApiUrl('/categories'))
+  fetch(getApiUrl('/categories'), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
@@ -219,11 +185,11 @@ function fetchLiveDataFromD1() {
     .catch(err => console.error('D1 Categories Fetch Error:', err));
 
   // 3. ดึงสรุปบทเรียนสดจาก Cloudflare D1
-  fetch(getApiUrl('/checklists'))
+  fetch(getApiUrl('/checklists'), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        checklistsList = data.filter(c => !deletedChecklists.has(c.id));
+        checklistsList = data;
         renderApp();
       }
     })
