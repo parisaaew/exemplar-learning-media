@@ -370,7 +370,7 @@ function renderMediaGrid() {
             <button class="btn-icon-admin edit" onclick="openEditMediaModal('${item.id}')" title="แก้ไขสื่อนี้">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="btn-icon-admin delete" onclick="confirmDeleteMedia('${item.id}')" title="ลบสื่อนี้">
+            <button class="btn-icon-admin delete" onclick="confirmDeleteMedia(event, '${item.id}')" title="ลบสื่อนี้">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -1297,32 +1297,35 @@ function handleSaveMedia(e) {
   renderApp();
 }
 
-async function confirmDeleteMedia(mediaId) {
-  const item = mediaList.find(m => m.id === mediaId);
-  if (!item) return;
+async function confirmDeleteMedia(e, mediaId) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  
+  const idToDelete = mediaId || (typeof e === 'string' ? e : '');
+  if (!idToDelete) return;
 
-  if (confirm(`คุณต้องการลบสื่อ "${item.title}" ออกจากระบบคลังสื่อหรือไม่?`)) {
-    markMediaAsDeleted(mediaId);
-    mediaList = mediaList.filter(m => m.id !== mediaId);
-    saveMediaToStorage();
-    renderApp();
+  const item = mediaList.find(m => m.id === idToDelete);
+  const title = item ? item.title : 'สื่อนี้';
 
-    try {
-      // 1. ส่งคำสั่งลบทาง HTTP DELETE
-      await fetch(getApiUrl(`/media?id=${encodeURIComponent(mediaId)}`), { method: 'DELETE' }).catch(() => {});
-      
-      // 2. ส่งคำสั่งลบสำรองทาง HTTP POST (action: 'delete') การันตีผ่านทุกเบราว์เซอร์ 100%
-      await fetch(getApiUrl('/media'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id: mediaId })
-      }).catch(() => {});
+  if (!confirm(`คุณต้องการลบสื่อ "${title}" ออกจากระบบคลังสื่อหรือไม่?`)) return;
 
-      showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
-      fetchLiveDataFromD1();
-    } catch (err) {
-      console.error('Cloudflare D1 delete error:', err);
-    }
+  // 1. ลบจากความจำหน้าจอทันที
+  mediaList = mediaList.filter(m => m.id !== idToDelete);
+  renderApp();
+  showToast('กำลังดำเนินการลบสื่อออกจากฐานข้อมูล D1...');
+
+  // 2. ส่งคำสั่งลบตรงไปยัง Cloudflare D1 Database
+  try {
+    await fetch(getApiUrl('/media'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id: idToDelete })
+    });
+    await fetch(getApiUrl(`/media?id=${encodeURIComponent(idToDelete)}`), { method: 'DELETE' }).catch(() => {});
+    showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
+  } catch (err) {
+    console.error('Cloudflare D1 delete error:', err);
+  } finally {
+    fetchLiveDataFromD1();
   }
 }
 
