@@ -9,13 +9,8 @@ const STORAGE_KEY_CATEGORIES = 'exemplar_categories_v1';
 const STORAGE_KEY_CHECKLISTS = 'exemplar_checklists_v1';
 const ADMIN_PASSCODE = 'admin121314';
 
-// Cloudflare Integration Ready Config
-const WORKER_API_BASE = 'https://exemplar-learning-media.parisa-aew.workers.dev/api';
-
+// Cloudflare Integration Ready Config (Cloudflare Pages Functions Engine)
 function getApiUrl(path) {
-  if (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('github.io') || window.location.protocol === 'file:' || !window.location.hostname.includes('workers.dev')) {
-    return WORKER_API_BASE + path;
-  }
   return '/api' + path;
 }
 
