@@ -171,16 +171,37 @@ function initApp() {
   renderApp();
 }
 
-const deletedMediaIds = new Set();
-const deletedChecklistIds = new Set();
+const STORAGE_KEY_DELETED_MEDIA = 'exemplar_deleted_media_v1';
+const STORAGE_KEY_DELETED_CHECKLISTS = 'exemplar_deleted_checklists_v1';
+
+function getDeletedMediaIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_MEDIA) || '[]')); } catch (e) { return new Set(); }
+}
+function markMediaAsDeleted(id) {
+  const set = getDeletedMediaIds();
+  set.add(id);
+  localStorage.setItem(STORAGE_KEY_DELETED_MEDIA, JSON.stringify(Array.from(set)));
+}
+
+function getDeletedChecklistIds() {
+  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_CHECKLISTS) || '[]')); } catch (e) { return new Set(); }
+}
+function markChecklistAsDeleted(id) {
+  const set = getDeletedChecklistIds();
+  set.add(id);
+  localStorage.setItem(STORAGE_KEY_DELETED_CHECKLISTS, JSON.stringify(Array.from(set)));
+}
 
 function fetchLiveDataFromD1() {
+  const deletedMedia = getDeletedMediaIds();
+  const deletedChecklists = getDeletedChecklistIds();
+
   // 1. ดึงรายการสื่อสดจาก Cloudflare D1
   fetch(getApiUrl('/media'))
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data.filter(m => !deletedMediaIds.has(m.id));
+        mediaList = data.filter(m => !deletedMedia.has(m.id));
         renderApp();
       }
     })
@@ -202,7 +223,7 @@ function fetchLiveDataFromD1() {
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        checklistsList = data.filter(c => !deletedChecklistIds.has(c.id));
+        checklistsList = data.filter(c => !deletedChecklists.has(c.id));
         renderApp();
       }
     })
@@ -812,7 +833,7 @@ function deleteChecklist(chkId) {
   if (!item) return;
 
   if (confirm(`ต้องการลบผลสรุปของนักเรียน "${item.name}" หรือไม่?`)) {
-    deletedChecklistIds.add(chkId);
+    markChecklistAsDeleted(chkId);
     checklistsList = checklistsList.filter(c => c.id !== chkId);
     saveChecklistsToStorage();
 
@@ -1291,7 +1312,7 @@ async function confirmDeleteMedia(mediaId) {
   if (!item) return;
 
   if (confirm(`คุณต้องการลบสื่อ "${item.title}" ออกจากระบบคลังสื่อหรือไม่?`)) {
-    deletedMediaIds.add(mediaId);
+    markMediaAsDeleted(mediaId);
     mediaList = mediaList.filter(m => m.id !== mediaId);
     saveMediaToStorage();
     renderApp();
