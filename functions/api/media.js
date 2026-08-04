@@ -66,12 +66,17 @@ export async function onRequest(context) {
     if (method === 'POST') {
       const body = await request.json();
 
-      if (body.action === 'delete' && body.id) {
-        const targetId = body.id;
+      if (body.action === 'delete') {
+        const targetId = body.id || '';
         const decodedId = decodeURIComponent(targetId).trim();
+        const targetTitle = body.title || '';
 
-        await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ?').bind(targetId, decodedId).run();
-        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?').bind(targetId, decodedId).run();
+        if (targetId || targetTitle) {
+          await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ? OR (title = ? AND title != "")')
+            .bind(targetId, decodedId, targetTitle).run();
+          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?')
+            .bind(targetId, decodedId).run();
+        }
 
         return new Response(JSON.stringify({ success: true, message: `ลบสื่อ ${targetId} ถาวรสำเร็จ` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }

@@ -1304,26 +1304,28 @@ async function confirmDeleteMedia(e, mediaId) {
   if (!idToDelete) return;
 
   const item = mediaList.find(m => m.id === idToDelete);
-  const title = item ? item.title : 'สื่อนี้';
+  const title = item ? item.title : '';
 
-  if (!confirm(`คุณต้องการลบสื่อ "${title}" ออกจากระบบคลังสื่อหรือไม่?`)) return;
+  if (!confirm(`คุณต้องการลบสื่อ "${title || 'นี้'}" ออกจากระบบคลังสื่อหรือไม่?`)) return;
 
-  // 1. บันทึกและซ่อนสื่อชิ้นนี้ถาวรจากหน้าจอ
-  markMediaAsDeleted(idToDelete);
+  // 1. ลบจากความจำหน้าจอทันที
   mediaList = mediaList.filter(m => m.id !== idToDelete);
   renderApp();
-  showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
+  showToast('กำลังลบสื่อออกจากฐานข้อมูล D1 บนคลาวด์...');
 
-  // 2. ยิงคำสั่งลบออกจากฐานข้อมูล Cloudflare D1 Database ในเบื้องหลัง
+  // 2. ส่งคำสั่งลบตรงไปยัง Cloudflare D1 Database (แนบทั้ง id และ title)
   try {
     await fetch(getApiUrl('/media'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', id: idToDelete })
+      body: JSON.stringify({ action: 'delete', id: idToDelete, title: title })
     });
     await fetch(getApiUrl(`/media?id=${encodeURIComponent(idToDelete)}`), { method: 'DELETE' }).catch(() => {});
+    showToast('ลบสื่อการเรียนรู้สำเร็จ สื่อจะหายไปจากทุกเบราว์เซอร์สดๆ ทันที');
   } catch (err) {
     console.error('Cloudflare D1 delete error:', err);
+  } finally {
+    fetchLiveDataFromD1();
   }
 }
 
