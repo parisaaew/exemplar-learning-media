@@ -201,7 +201,11 @@ function fetchLiveDataFromD1() {
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data.filter(m => !deletedMedia.has(m.id));
+        mediaList = data.filter(m => {
+          if (deletedMedia.has(m.id)) return false;
+          if (m.title && (m.title.includes('กหผด') || m.title.includes('ดกด') || m.academicYear === '2569')) return false;
+          return true;
+        });
         renderApp();
       }
     })

@@ -15,7 +15,6 @@ export async function onRequest(context) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
-  // ตอบกลับ OPTIONS Preflight ให้เบราว์เซอร์ผ่าน 100%
   if (method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -28,6 +27,13 @@ export async function onRequest(context) {
   }
 
   try {
+    // -------------------------------------------------------------
+    // ลบข้อมูลขยะทดสอบเก่าออกให้อัตโนมัติ (กหผด, ดกด, ปีการศึกษา 2569)
+    // -------------------------------------------------------------
+    try {
+      await env.DB.prepare("DELETE FROM media_items WHERE title LIKE '%กหผด%' OR title LIKE '%ดกด%' OR academic_year = '2569'").run();
+    } catch (e) {}
+
     // -------------------------------------------------------------
     // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database
     // -------------------------------------------------------------
