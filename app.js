@@ -608,20 +608,22 @@ function openAvgRatingSummaryModal() {
 }
 
 async function handleChecklistSubmit(e) {
-  e.preventDefault();
-  const nameEl = document.getElementById('studentName') || document.getElementById('studentNameInput');
-  const classEl = document.getElementById('studentClass') || document.getElementById('studentClassInput');
-  const noEl = document.getElementById('studentNo') || document.getElementById('studentNoInput');
+  if (e && e.preventDefault) e.preventDefault();
+  
+  const name = (document.getElementById('studentName') || document.getElementById('studentNameInput'))?.value?.trim() || '';
+  const studentClass = (document.getElementById('studentClass') || document.getElementById('studentClassInput'))?.value?.trim() || '';
+  const studentNo = (document.getElementById('studentNo') || document.getElementById('studentNoInput'))?.value?.trim() || '';
 
-  const name = nameEl ? nameEl.value.trim() : '';
-  const studentClass = classEl ? classEl.value.trim() : '';
-  const studentNo = noEl ? noEl.value.trim() : '';
+  const bestPractices = document.getElementById('bestPracticesInput')?.value?.trim() || '';
+  const thingsToAvoid = document.getElementById('thingsToAvoidInput')?.value?.trim() || '';
+  const ruleColor = document.getElementById('ruleColorInput')?.value?.trim() || '';
+  const ruleFont = document.getElementById('ruleFontInput')?.value?.trim() || '';
+  const ruleCta = document.getElementById('ruleCtaInput')?.value?.trim() || '';
 
-  const bestPractices = document.getElementById('bestPracticesInput').value.trim();
-  const thingsToAvoid = document.getElementById('thingsToAvoidInput').value.trim();
-  const ruleColor = document.getElementById('ruleColorInput').value.trim();
-  const ruleFont = document.getElementById('ruleFontInput').value.trim();
-  const ruleCta = document.getElementById('ruleCtaInput').value.trim();
+  if (!name) {
+    alert('กรุณากรอกชื่อ-นามสกุลนักเรียนก่อนส่งครับ');
+    return;
+  }
 
   const newChecklist = {
     id: 'chk-' + Date.now(),
@@ -636,7 +638,7 @@ async function handleChecklistSubmit(e) {
     timestamp: new Date().toISOString().split('T')[0]
   };
 
-  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const submitBtn = e?.target?.querySelector ? e.target.querySelector('button[type="submit"]') : null;
   const originalHtml = submitBtn ? submitBtn.innerHTML : '';
   if (submitBtn) {
     submitBtn.disabled = true;
