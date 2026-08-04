@@ -48,8 +48,10 @@ export async function onRequest(context) {
       const body = await request.json();
 
       if (body.action === 'delete' && body.id) {
-        await env.DB.prepare('DELETE FROM student_checklists WHERE id = ?').bind(body.id).run();
-        return new Response(JSON.stringify({ success: true, message: `ลบสรุป ${body.id} สำเร็จ` }), {
+        const targetId = body.id;
+        const decodedId = decodeURIComponent(targetId).trim();
+        await env.DB.prepare('DELETE FROM student_checklists WHERE id = ? OR id = ?').bind(targetId, decodedId).run();
+        return new Response(JSON.stringify({ success: true, message: `ลบสรุป ${targetId} สำเร็จ` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
         });
       }
@@ -79,7 +81,8 @@ export async function onRequest(context) {
       const targetId = queryId || (await request.json().catch(() => ({}))).id;
       if (!targetId) return new Response(JSON.stringify({ error: 'Missing ID' }), { status: 400, headers: corsHeaders });
 
-      await env.DB.prepare('DELETE FROM student_checklists WHERE id = ?').bind(targetId).run();
+      const decodedId = decodeURIComponent(targetId).trim();
+      await env.DB.prepare('DELETE FROM student_checklists WHERE id = ? OR id = ?').bind(targetId, decodedId).run();
       return new Response(JSON.stringify({ success: true, message: `ลบสรุป ${targetId} สำเร็จ` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
       });
