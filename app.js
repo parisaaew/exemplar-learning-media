@@ -609,9 +609,14 @@ function openAvgRatingSummaryModal() {
 
 async function handleChecklistSubmit(e) {
   e.preventDefault();
-  const name = document.getElementById('studentNameInput').value.trim();
-  const studentClass = document.getElementById('studentClassInput').value.trim();
-  const studentNo = document.getElementById('studentNoInput').value.trim();
+  const nameEl = document.getElementById('studentName') || document.getElementById('studentNameInput');
+  const classEl = document.getElementById('studentClass') || document.getElementById('studentClassInput');
+  const noEl = document.getElementById('studentNo') || document.getElementById('studentNoInput');
+
+  const name = nameEl ? nameEl.value.trim() : '';
+  const studentClass = classEl ? classEl.value.trim() : '';
+  const studentNo = noEl ? noEl.value.trim() : '';
+
   const bestPractices = document.getElementById('bestPracticesInput').value.trim();
   const thingsToAvoid = document.getElementById('thingsToAvoidInput').value.trim();
   const ruleColor = document.getElementById('ruleColorInput').value.trim();
