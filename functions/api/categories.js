@@ -3,20 +3,25 @@
  * Project: คลังสื่อการเรียนรู้ผลงานต้นแบบ โรงเรียนวัดนาวง
  */
 
-export async function onRequestGet(context) {
-  const env = context.env;
+export async function onRequest(context) {
+  const { request, env } = context;
+  const method = request.method;
+  const url = new URL(request.url);
+  const queryId = url.searchParams.get('id');
+
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
-  if (!env.DB) {
-    return new Response(JSON.stringify(getInitialCategories()), { headers: corsHeaders });
+  if (method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  if (!env.DB) return new Response(JSON.stringify(getInitialCategories()), { headers: corsHeaders });
+
   try {
-    // บังคับสร้างตารางหมวดหมู่หากยังไม่มี
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS media_categories (
         id TEXT PRIMARY KEY,
@@ -26,90 +31,72 @@ export async function onRequestGet(context) {
       );
     `).run();
 
-    let { results } = await env.DB.prepare('SELECT * FROM media_categories').all();
-
-    // Seed หากตารางยังว่างเปล่า
-    if (!results || results.length === 0) {
-      const initials = getInitialCategories();
-      for (const cat of initials) {
-        await env.DB.prepare(`
-          INSERT INTO media_categories (id, name, icon, badge_class)
-          VALUES (?, ?, ?, ?)
-        `).bind(cat.id, cat.name, cat.icon, cat.badgeClass).run();
+    if (method === 'GET') {
+      let { results } = await env.DB.prepare('SELECT * FROM media_categories').all();
+      if (!results || results.length === 0) {
+        const initials = getInitialCategories();
+        for (const cat of initials) {
+          await env.DB.prepare(`
+            INSERT INTO media_categories (id, name, icon, badge_class)
+            VALUES (?, ?, ?, ?)
+          `).bind(cat.id, cat.name, cat.icon, cat.badgeClass).run();
+        }
+        const seeded = await env.DB.prepare('SELECT * FROM media_categories').all();
+        results = seeded.results;
       }
-      const seeded = await env.DB.prepare('SELECT * FROM media_categories').all();
-      results = seeded.results;
+
+      const formatted = (results || []).map(c => ({
+        id: c.id,
+        name: c.name,
+        icon: c.icon || 'fa-tag',
+        badgeClass: c.badge_class || c.badgeClass || 'badge-website'
+      }));
+
+      return new Response(JSON.stringify(formatted), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+      });
     }
 
-    const formatted = (results || []).map(c => ({
-      id: c.id,
-      name: c.name,
-      icon: c.icon || 'fa-tag',
-      badgeClass: c.badge_class || c.badgeClass || 'badge-website'
-    }));
+    if (method === 'POST') {
+      const body = await request.json();
 
-    return new Response(JSON.stringify(formatted), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify(getInitialCategories()), { headers: corsHeaders });
-  }
-}
+      if (body.action === 'delete' && body.id) {
+        await env.DB.prepare('DELETE FROM media_categories WHERE id = ?').bind(body.id).run();
+        return new Response(JSON.stringify({ success: true, message: `ลบหมวดหมู่ ${body.id} สำเร็จ` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
 
-export async function onRequestPost(context) {
-  const env = context.env;
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+      await env.DB.prepare(`
+        INSERT INTO media_categories (id, name, icon, badge_class)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          icon = excluded.icon,
+          badge_class = excluded.badge_class
+      `).bind(
+        body.id || 'cat-' + Date.now(),
+        body.name,
+        body.icon || 'fa-tag',
+        body.badgeClass || 'badge-website'
+      ).run();
 
-  if (!env.DB) return new Response(JSON.stringify({ success: false }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ success: true, message: 'บันทึกหมวดหมู่สำเร็จ' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+      });
+    }
 
-  try {
-    const body = await context.request.json();
+    if (method === 'DELETE') {
+      const targetId = queryId || (await request.json().catch(() => ({}))).id;
+      if (!targetId) return new Response(JSON.stringify({ error: 'Missing ID' }), { status: 400, headers: corsHeaders });
 
-    await env.DB.prepare(`
-      INSERT INTO media_categories (id, name, icon, badge_class)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        name = excluded.name,
-        icon = excluded.icon,
-        badge_class = excluded.badge_class
-    `).bind(
-      body.id || 'cat-' + Date.now(),
-      body.name,
-      body.icon || 'fa-tag',
-      body.badgeClass || 'badge-website'
-    ).run();
+      await env.DB.prepare('DELETE FROM media_categories WHERE id = ?').bind(targetId).run();
+      return new Response(JSON.stringify({ success: true, message: `ลบหมวดหมู่ ${targetId} สำเร็จ` }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+      });
+    }
 
-    return new Response(JSON.stringify({ success: true, message: 'บันทึกหมวดหมู่ลง D1 Database สำเร็จ' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
-  }
-}
-
-export async function onRequestDelete(context) {
-  const env = context.env;
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-
-  const url = new URL(context.request.url);
-  const queryId = url.searchParams.get('id');
-
-  if (!env.DB) return new Response(JSON.stringify({ error: 'DB Binding Not Found' }), { status: 500, headers: corsHeaders });
-  if (!queryId) return new Response(JSON.stringify({ error: 'Missing ID' }), { status: 400, headers: corsHeaders });
-
-  try {
-    await env.DB.prepare('DELETE FROM media_categories WHERE id = ?').bind(queryId).run();
-    return new Response(JSON.stringify({ success: true, message: 'ลบหมวดหมู่จาก D1 Database สำเร็จ' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
-    });
+    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: corsHeaders });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }

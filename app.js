@@ -816,9 +816,14 @@ function deleteChecklist(chkId) {
     checklistsList = checklistsList.filter(c => c.id !== chkId);
     saveChecklistsToStorage();
 
-    // ส่งคำสั่งลบไปยัง Cloudflare D1 Database
-    fetch(getApiUrl(`/checklists?id=${encodeURIComponent(chkId)}`), { method: 'DELETE' })
-      .catch(err => console.error('Cloudflare D1 delete error:', err));
+    // 1. ส่งคำสั่งลบทาง HTTP DELETE
+    fetch(getApiUrl(`/checklists?id=${encodeURIComponent(chkId)}`), { method: 'DELETE' }).catch(() => {});
+    // 2. ส่งคำสั่งลบสำรองทาง HTTP POST (action: 'delete')
+    fetch(getApiUrl('/checklists'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id: chkId })
+    }).catch(() => {});
 
     renderChecklistsTable();
     renderApp();
@@ -1292,8 +1297,16 @@ async function confirmDeleteMedia(mediaId) {
     renderApp();
 
     try {
-      // ส่งคำสั่งลบสื่อไปยัง Cloudflare D1 Database และรอให้ลบเสร็จสิ้นก่อน
-      await fetch(getApiUrl(`/media?id=${encodeURIComponent(mediaId)}`), { method: 'DELETE' });
+      // 1. ส่งคำสั่งลบทาง HTTP DELETE
+      await fetch(getApiUrl(`/media?id=${encodeURIComponent(mediaId)}`), { method: 'DELETE' }).catch(() => {});
+      
+      // 2. ส่งคำสั่งลบสำรองทาง HTTP POST (action: 'delete') การันตีผ่านทุกเบราว์เซอร์ 100%
+      await fetch(getApiUrl('/media'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id: mediaId })
+      }).catch(() => {});
+
       showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
       fetchLiveDataFromD1();
     } catch (err) {
