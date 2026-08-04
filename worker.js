@@ -2,13 +2,14 @@
  * Cloudflare Worker + Cloudflare D1 Database Real-time Engine
  * Project: คลังสื่อการเรียนรู้ผลงานต้นแบบ โรงเรียนวัดนาวง
  * 
- * ทุกคนอ่านและบันทึกข้อมูลลงฐานข้อมูลเดียวกันแบบ Real-time 100%
+ * ทุกคนอ่าน และ ลบ และ บันทึกข้อมูลลงฐานข้อมูลเดียวกันแบบ Real-time 100%
  */
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const pathname = url.pathname;
+    const queryId = url.searchParams.get('id');
 
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
@@ -22,20 +23,26 @@ export default {
 
     try {
       // -------------------------------------------------------------
-      // 1. API: ดึงรายการสื่อทั้งหมดจาก D1 Database
+      // 1. API: ดึงรายการสื่อทั้งหมดจาก D1 Database (Auto-Seed หากยังไม่มีข้อมูล)
       // -------------------------------------------------------------
       if (pathname === '/api/media' && request.method === 'GET') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
 
-        const { results: mediaRows } = await env.DB.prepare(
+        let { results: mediaRows } = await env.DB.prepare(
           'SELECT * FROM media_items ORDER BY created_at DESC'
         ).all();
+
+        // หากในฐานข้อมูล D1 ยังไม่มีข้อมูลสื่อ ให้เพิ่มสื่อเริ่มต้นทั้ง 6 รายการลง D1 อัตโนมัติทันที
+        if (!mediaRows || mediaRows.length === 0) {
+          await seedInitialMediaData(env.DB);
+          const seeded = await env.DB.prepare('SELECT * FROM media_items ORDER BY created_at DESC').all();
+          mediaRows = seeded.results;
+        }
 
         const { results: ratingRows } = await env.DB.prepare(
           'SELECT * FROM media_ratings'
         ).all();
 
-        // รวมคะแนนประเมินเข้ากับสื่อแต่ละชิ้น
         const formattedList = (mediaRows || []).map(m => {
           const itemRatings = (ratingRows || []).filter(r => r.media_id === m.id).map(r => ({
             readability: r.readability,
@@ -61,7 +68,7 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 2. API: บันทึกสื่อใหม่ / แบนเนอร์นักเรียน ลง D1 Database
+      // 2. API: บันทึกสื่อใหม่ / แก้ไขสื่อ ลง D1 Database (INSERT OR REPLACE)
       // -------------------------------------------------------------
       if (pathname === '/api/media' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
@@ -70,6 +77,14 @@ export default {
         await env.DB.prepare(`
           INSERT INTO media_items (id, title, category, academic_year, url, thumbnail, tags, description)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            category = excluded.category,
+            academic_year = excluded.academic_year,
+            url = excluded.url,
+            thumbnail = excluded.thumbnail,
+            tags = excluded.tags,
+            description = excluded.description
         `).bind(
           body.id || 'media-' + Date.now(),
           body.title,
@@ -81,11 +96,24 @@ export default {
           body.description || ''
         ).run();
 
-        return jsonResponse({ success: true, message: 'บันทึกสื่อลง Cloudflare D1 สำเร็จ' }, corsHeaders);
+        return jsonResponse({ success: true, message: 'บันทึก/แก้ไขสื่อลง Cloudflare D1 สำเร็จ' }, corsHeaders);
       }
 
       // -------------------------------------------------------------
-      // 3. API: บันทึกคะแนนดาว 3 มิติ ลง D1 Database
+      // 3. API: ลบสื่อออกจาก D1 Database (DELETE)
+      // -------------------------------------------------------------
+      if (pathname === '/api/media' && request.method === 'DELETE') {
+        if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
+        if (!queryId) return jsonResponse({ error: 'Missing media ID' }, corsHeaders, 400);
+
+        await env.DB.prepare('DELETE FROM media_items WHERE id = ?').bind(queryId).run();
+        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ?').bind(queryId).run();
+
+        return jsonResponse({ success: true, message: `ลบสื่อ ${queryId} จาก Cloudflare D1 เรียบร้อย` }, corsHeaders);
+      }
+
+      // -------------------------------------------------------------
+      // 4. API: บันทึกคะแนนดาว 3 มิติ ลง D1 Database
       // -------------------------------------------------------------
       if (pathname === '/api/ratings' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
@@ -107,7 +135,7 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 4. API: บันทึกสรุปถอดบทเรียน K ของนักเรียน ลง D1 Database
+      // 5. API: บันทึกสรุปถอดบทเรียน K ลง D1 Database
       // -------------------------------------------------------------
       if (pathname === '/api/checklists' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
@@ -133,7 +161,7 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 5. API: ดึงรายการสรุปถอดบทเรียนนักเรียนทั้งหมดจาก D1 Database
+      // 6. API: ดึงรายการสรุปถอดบทเรียนทั้งหมดจาก D1 Database
       // -------------------------------------------------------------
       if (pathname === '/api/checklists' && request.method === 'GET') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
@@ -142,11 +170,18 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 6. Serve Application HTML (ดึงข้อมูลตรงจาก Cloudflare D1 API)
+      // 7. API: ลบรายการสรุปถอดบทเรียนออกจาก D1 Database (DELETE)
       // -------------------------------------------------------------
-      return new Response(getAppHtml(), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8', ...corsHeaders }
-      });
+      if (pathname === '/api/checklists' && request.method === 'DELETE') {
+        if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
+        if (!queryId) return jsonResponse({ error: 'Missing checklist ID' }, corsHeaders, 400);
+
+        await env.DB.prepare('DELETE FROM student_checklists WHERE id = ?').bind(queryId).run();
+        return jsonResponse({ success: true, message: `ลบสรุปถอดบทเรียน ${queryId} เรียบร้อย` }, corsHeaders);
+      }
+
+      // Fallback
+      return new Response('Cloudflare D1 Real-time API Engine Active', { headers: corsHeaders });
 
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -154,201 +189,92 @@ export default {
   }
 };
 
+async function seedInitialMediaData(db) {
+  const initialMedia = [
+    {
+      id: 'media-1',
+      title: 'เว็บไซต์ผลงานพอร์ตโฟลิโอดิจิทัล (Student Portfolio Website)',
+      category: 'website',
+      academic_year: '2567',
+      url: 'https://example.com/portfolio-m3',
+      thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+      tags: 'HTML5,CSS Grid,UX/UI,พอร์ตโฟลิโอ',
+      description: 'ผลงานเว็บไซต์ส่วนตัวสำหรับจัดเก็บผลงาน ออกแบบด้วยโครงสร้าง Grid System เน้นอ่านง่าย อ่านสบายตา และมีจุดนำสายตาชัดเจน'
+    },
+    {
+      id: 'media-2',
+      title: 'แบนเนอร์ประชาสัมพันธ์กิจกรรมเทคโนโลยี (Best Practice Banner)',
+      category: 'banner',
+      academic_year: '2567',
+      url: 'https://images.unsplash.com/photo-1542744094-3a31b272c490?auto=format&fit=crop&w=1200&q=80',
+      thumbnail: 'https://images.unsplash.com/photo-1542744094-3a31b272c490?auto=format&fit=crop&w=800&q=80',
+      tags: 'Graphic Design,Banner,Contrast,การนำสายตา',
+      description: 'ตัวอย่างแบนเนอร์สื่อความหมายที่ดี มีพอยท์เน้นจุดสนใจชัดเจน (Focus & CTA) ใช้หลักการความต่างระดับสี (Color Contrast)'
+    },
+    {
+      id: 'media-3',
+      title: 'วิดีโอแนะนำหลักการออกแบบ UX/UI สำหรับนักเรียน',
+      category: 'video',
+      academic_year: '2567',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      thumbnail: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=800&q=80',
+      tags: 'UX/UI Video,Tutorial,Visual Design',
+      description: 'วิดีโอความยาว 5 นาที สรุปหลักการเลือกใช้สี ตัวอักษร และการจัดวาง Layout ในการสร้างสรรค์สื่อดิจิทัลให้ตรงกลุ่มเป้าหมาย'
+    },
+    {
+      id: 'media-4',
+      title: 'ใบความรู้เรื่องการออกแบบ Wireframe & User Journey Map',
+      category: 'document',
+      academic_year: '2567',
+      url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+      thumbnail: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&w=800&q=80',
+      tags: 'Document,PDF,Wireframe,ใบความรู้',
+      description: 'เอกสารสรุปขั้นตอนการวางแผนสร้างเว็บด้วย Wireframe 8 ขั้นตอน พร้อมตัวอย่างการร่างภาพก่อนลงมือเขียนโค้ดจริง'
+    },
+    {
+      id: 'media-5',
+      title: 'เว็บไซต์ระบบลงทะเบียนกิจกรรมชมรมคอมพิวเตอร์',
+      category: 'website',
+      academic_year: '2566',
+      url: 'https://example.com/club-reg',
+      thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+      tags: 'Web Application,Form Design,UI Component',
+      description: 'เว็บไซต์แอพพลิเคชันตัวอย่างการสร้างฟอร์มกรอกข้อมูล และปุ่มกดโต้ตอบ (Interactive Buttons) ดีไซน์เรียบหรูสไตล์ Minimal'
+    },
+    {
+      id: 'media-6',
+      title: 'ชุดสื่อนำเสนอ Infographic เรื่อง ความปลอดภัยในโลกไซเบอร์',
+      category: 'banner',
+      academic_year: '2567',
+      url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+      thumbnail: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+      tags: 'Infographic,Cyber Security,Visual Communication',
+      description: 'สื่ออินโฟกราฟิกนำเสนอข้อมูลความปลอดภัยด้วยไอคอนและตัวเลขสถิติ ใช้โทนสีเขียว-น้ำเงินสื่อถึงความน่าเชื่อถือ'
+    }
+  ];
+
+  for (const m of initialMedia) {
+    await db.prepare(`
+      INSERT INTO media_items (id, title, category, academic_year, url, thumbnail, tags, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(m.id, m.title, m.category, m.academic_year, m.url, m.thumbnail, m.tags, m.description).run();
+  }
+
+  // Seed sample ratings
+  await db.prepare(`
+    INSERT INTO media_ratings (media_id, readability, visual_harmony, focus_cta, reflection, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind('media-1', 5, 5, 4, 'จัดวางเมนูหัวข้ออ่านง่ายมาก สีตัวหนังสือตัดกับพื้นหลังดี', '2026-08-01').run();
+
+  await db.prepare(`
+    INSERT INTO media_ratings (media_id, readability, visual_harmony, focus_cta, reflection, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind('media-2', 5, 4, 5, 'ปุ่ม Call to Action โดดเด่น มองเห็นได้ทันทีตั้งแต่แรกเห็น', '2026-08-02').run();
+}
+
 function jsonResponse(data, headers, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' }
   });
-}
-
-function getAppHtml() {
-  return `<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>คลังสื่อการเรียนรู้ผลงานต้นแบบ โรงเรียนวัดนาวง</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      --primary-50: #eef2ff; --primary-100: #e0e7ff; --primary-500: #6366f1; --primary-600: #4f46e5; --primary-700: #4338ca; --primary-900: #1e1b4b;
-      --accent-cyan: #06b6d4; --accent-amber: #f59e0b; --accent-emerald: #10b981; --accent-rose: #f43f5e;
-      --bg-slate: #f8fafc; --bg-card: #ffffff; --text-main: #0f172a; --text-muted: #64748b; --border-color: #e2e8f0;
-      --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1); --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
-      --radius-sm: 0.375rem; --radius-md: 0.75rem; --radius-lg: 1rem; --radius-full: 9999px; --transition-normal: 0.25s ease;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Prompt', 'Inter', sans-serif; background-color: var(--bg-slate); color: var(--text-main); line-height: 1.6; }
-    .container { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
-    .gradient-text { background: linear-gradient(135deg, #a5b4fc 0%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; font-family: inherit; font-weight: 500; font-size: 0.9rem; padding: 0.55rem 1.15rem; border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer; text-decoration: none; gap: 0.4rem; }
-    .btn-primary { background: linear-gradient(135deg, var(--primary-600), var(--primary-700)); color: #ffffff; }
-    .btn-outline { background-color: transparent; border-color: var(--border-color); color: var(--text-main); }
-    .btn-outline-nav, .btn-admin { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffffff; border-radius: var(--radius-full); }
-    .btn-outline-nav:hover, .btn-admin:hover { background: #ffffff; color: var(--primary-900); }
-    .navbar { background-color: var(--primary-900); border-bottom: 1px solid rgba(255, 255, 255, 0.1); position: sticky; top: 0; z-index: 100; }
-    .nav-container { display: flex; align-items: center; justify-content: space-between; height: 4.25rem; max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
-    .nav-brand { display: flex; align-items: center; gap: 0.85rem; color: #ffffff; font-weight: 700; font-size: 1.15rem; }
-    .nav-actions { display: flex; gap: 0.75rem; }
-    .hero-section { background: radial-gradient(circle at 50% 0%, #2e1065 0%, #1e1b4b 70%, #0f172a 100%); color: #ffffff; padding: 4rem 0 3.5rem 0; text-align: center; }
-    .hero-title { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; }
-    .hero-description { font-size: 1.05rem; color: #cbd5e1; max-width: 750px; margin: 0 auto 2rem auto; }
-    .hero-stats { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .stat-chip { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); padding: 0.5rem 1.25rem; border-radius: var(--radius-full); font-size: 0.9rem; color: #ffffff; display: flex; align-items: center; gap: 0.5rem; }
-    .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.75rem; margin-top: 2rem; }
-    .media-card { background: #ffffff; border-radius: 1rem; border: 1px solid var(--border-color); overflow: hidden; box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
-    .card-thumbnail-wrapper { height: 200px; background: #cbd5e1; position: relative; }
-    .card-thumbnail { width: 100%; height: 100%; object-fit: cover; }
-    .card-body { padding: 1.25rem; }
-    .card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .footer { background: var(--primary-900); color: #a5b4fc; padding: 2.5rem 0; margin-top: 4rem; text-align: center; }
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-    .modal-container { background: #ffffff; border-radius: 1rem; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 1.5rem; }
-    .hidden { display: none !important; }
-    .badge { padding: 0.25rem 0.6rem; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 600; color: #ffffff; background: #3b82f6; }
-  </style>
-</head>
-<body>
-  <nav class="navbar">
-    <div class="nav-container">
-      <div class="nav-brand"><i class="fa-solid fa-graduation-cap me-2"></i> คลังสื่อผลงานต้นแบบ โรงเรียนวัดนาวง</div>
-      <div class="nav-actions">
-        <button class="btn btn-outline-nav" onclick="openChecklistModal()"><i class="fa-solid fa-pen-to-square"></i> สรุปถอดบทเรียน</button>
-        <button class="btn btn-outline-nav" onclick="openSubmitModal()"><i class="fa-solid fa-cloud-arrow-up"></i> ส่งแบนเนอร์ของฉัน</button>
-      </div>
-    </div>
-  </nav>
-
-  <header class="hero-section">
-    <div class="container">
-      <h1 class="hero-title">คลังสื่อการเรียนรู้ <br><span class="gradient-text">ผลงานต้นแบบ</span></h1>
-      <p class="hero-description">ศูนย์รวมผลงานดิจิทัลต้นแบบ เชื่อมต่อฐานข้อมูล Cloudflare D1 Database แบบ Real-time</p>
-      <div class="hero-stats">
-        <div class="stat-chip"><i class="fa-solid fa-layer-group"></i><span id="totalStat">0</span> สื่อในระบบ</div>
-        <div class="stat-chip"><i class="fa-solid fa-database" style="color: #10b981;"></i> Cloudflare D1 Live</div>
-      </div>
-    </div>
-  </header>
-
-  <main class="container" style="padding-top: 2rem; padding-bottom: 4rem;">
-    <h2 style="font-size: 1.4rem; font-weight: 700;"><i class="fa-solid fa-list-check me-2"></i>รายการสื่อการเรียนรู้ทั้งหมด (จาก Cloudflare D1)</h2>
-    <div id="mediaGrid" class="media-grid">
-      <p style="color: #64748b;">กำลังโหลดข้อมูลจากฐานข้อมูล Cloudflare D1 Database...</p>
-    </div>
-  </main>
-
-  <!-- Submit Banner Modal -->
-  <div id="submitModal" class="modal-overlay hidden">
-    <div class="modal-container">
-      <h3 style="margin-bottom: 1rem;">📤 ส่งผลงานแบนเนอร์ (ลง Cloudflare D1)</h3>
-      <form onsubmit="submitBanner(event)">
-        <div style="margin-bottom: 0.75rem;">
-          <label style="display:block; font-size:0.85rem; font-weight:600;">ชื่อผู้เรียน *</label>
-          <input type="text" id="bAuthor" required style="width:100%; padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1;">
-        </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="display:block; font-size:0.85rem; font-weight:600;">ชื่อผลงานแบนเนอร์ *</label>
-          <input type="text" id="bTitle" required style="width:100%; padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1;">
-        </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="display:block; font-size:0.85rem; font-weight:600;">URL รูปภาพแบนเนอร์ *</label>
-          <input type="url" id="bUrl" required style="width:100%; padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1;" placeholder="https://...">
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label style="display:block; font-size:0.85rem; font-weight:600;">แนวคิดการออกแบบ *</label>
-          <textarea id="bDesc" required style="width:100%; padding:0.5rem; border-radius:0.5rem; border:1px solid #cbd5e1;" rows="3"></textarea>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-          <button type="button" class="btn btn-outline" onclick="closeSubmitModal()">ยกเลิก</button>
-          <button type="submit" class="btn btn-primary">บันทึกเข้า D1 Database</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <footer class="footer">
-    <p>คลังสื่อการเรียนรู้ผลงานต้นแบบ | พัฒนาระบบโดยนางปริศา มานพ ครูโรงเรียนวัดนาวง</p>
-  </footer>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', loadMediaFromD1);
-
-    async function loadMediaFromD1() {
-      try {
-        const res = await fetch('/api/media');
-        const data = await res.json();
-        renderGrid(data);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    function renderGrid(data) {
-      const grid = document.getElementById('mediaGrid');
-      document.getElementById('totalStat').textContent = data.length;
-      if (data.length === 0) {
-        grid.innerHTML = '<p style="color: #64748b;">ยังไม่มีข้อมูลสื่อในฐานข้อมูล Cloudflare D1 (สามารถกดปุ่ม "ส่งแบนเนอร์ของฉัน" เพื่อเพิ่มสื่อแรกได้ทันที)</p>';
-        return;
-      }
-      let html = '';
-      data.forEach(item => {
-        html += \`
-          <div class="media-card">
-            <div class="card-thumbnail-wrapper">
-              <img src="\${item.thumbnail || item.url}" class="card-thumbnail" onerror="this.src='https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80'">
-              <div style="position:absolute; top:0.5rem; left:0.5rem;"><span class="badge">\${item.category || 'สื่อ'}</span></div>
-            </div>
-            <div class="card-body">
-              <h3 class="card-title">\${item.title}</h3>
-              <p style="font-size:0.875rem; color:#64748b;">\${item.description || ''}</p>
-            </div>
-            <div style="padding:0.75rem 1.25rem; background:#f8fafc; border-top:1px solid #e2e8f0;">
-              <a href="\${item.url}" target="_blank" class="btn btn-outline btn-sm" style="width:100%;">เปิดดูผลงานสื่อ</a>
-            </div>
-          </div>
-        \`;
-      });
-      grid.innerHTML = html;
-    }
-
-    function openSubmitModal() { document.getElementById('submitModal').classList.remove('hidden'); }
-    function closeSubmitModal() { document.getElementById('submitModal').classList.add('hidden'); }
-    function openChecklistModal() { alert('แบบสรุปถอดบทเรียน K เชื่อมต่อกับ Cloudflare D1 เรียบร้อย!'); }
-
-    async function submitBanner(e) {
-      e.preventDefault();
-      const name = document.getElementById('bAuthor').value.trim();
-      const title = document.getElementById('bTitle').value.trim();
-      const url = document.getElementById('bUrl').value.trim();
-      const desc = document.getElementById('bDesc').value.trim();
-
-      try {
-        const res = await fetch('/api/media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: \`[ผลงานโดย \${name}] \${title}\`,
-            category: 'student-banner',
-            url: url,
-            thumbnail: url,
-            description: desc,
-            tags: [name]
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert('บันทึกผลงานแบนเนอร์ลงฐานข้อมูล Cloudflare D1 สำเร็จ!');
-          closeSubmitModal();
-          loadMediaFromD1();
-        }
-      } catch (err) {
-        alert('เกิดข้อผิดพลาด: ' + err.message);
-      }
-    }
-  </script>
-</body>
-</html>`;
 }

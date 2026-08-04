@@ -728,6 +728,11 @@ function deleteChecklist(chkId) {
   if (confirm(`ต้องการลบผลสรุปของนักเรียน "${item.name}" หรือไม่?`)) {
     checklistsList = checklistsList.filter(c => c.id !== chkId);
     saveChecklistsToStorage();
+
+    // ส่งคำสั่งลบไปยัง Cloudflare D1 Database
+    fetch(`/api/checklists?id=${encodeURIComponent(chkId)}`, { method: 'DELETE' })
+      .catch(err => console.error('Cloudflare D1 delete error:', err));
+
     renderChecklistsTable();
     renderApp();
     showToast('ลบข้อมูลเรียบร้อยแล้ว');
@@ -844,6 +849,21 @@ function handleRatingSubmit(e) {
 
   item.ratings.push(newRating);
   saveMediaToStorage();
+
+  // ส่งข้อมูลคะแนนดาวเข้า Cloudflare D1 Database API
+  fetch('/api/ratings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mediaId: mediaId,
+      readability: newRating.readability,
+      visualHarmony: newRating.visualHarmony,
+      focusCta: newRating.focusCta,
+      reflection: newRating.reflection,
+      timestamp: newRating.timestamp
+    })
+  }).catch(err => console.error('Cloudflare D1 rating sync error:', err));
+
   closeRatingModal();
   renderApp();
 
@@ -1116,6 +1136,14 @@ function handleSaveMedia(e) {
       item.thumbnail = thumbnail;
       item.tags = tags;
       item.description = description;
+
+      // ส่งอัปเดตเข้า Cloudflare D1 Database
+      fetch('/api/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      }).catch(err => console.error('Cloudflare D1 sync error:', err));
+
       showToast('อัปเดตข้อมูลสื่อสำเร็จ');
     }
   } else {
@@ -1131,6 +1159,14 @@ function handleSaveMedia(e) {
       ratings: []
     };
     mediaList.unshift(newItem);
+
+    // ส่งบันทึกสื่อใหม่เข้า Cloudflare D1 Database
+    fetch('/api/media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newItem)
+    }).catch(err => console.error('Cloudflare D1 sync error:', err));
+
     showToast('เพิ่มสื่อการเรียนรู้ใหม่สำเร็จ');
   }
 
@@ -1146,6 +1182,11 @@ function confirmDeleteMedia(mediaId) {
   if (confirm(`คุณต้องการลบสื่อ "${item.title}" ออกจากระบบคลังสื่อหรือไม่?`)) {
     mediaList = mediaList.filter(m => m.id !== mediaId);
     saveMediaToStorage();
+
+    // ส่งคำสั่งลบสื่อไปยัง Cloudflare D1 Database
+    fetch(`/api/media?id=${encodeURIComponent(mediaId)}`, { method: 'DELETE' })
+      .catch(err => console.error('Cloudflare D1 delete error:', err));
+
     renderApp();
     showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
   }
