@@ -1277,20 +1277,22 @@ function handleSaveMedia(e) {
   renderApp();
 }
 
-function confirmDeleteMedia(mediaId) {
+async function confirmDeleteMedia(mediaId) {
   const item = mediaList.find(m => m.id === mediaId);
   if (!item) return;
 
   if (confirm(`คุณต้องการลบสื่อ "${item.title}" ออกจากระบบคลังสื่อหรือไม่?`)) {
     mediaList = mediaList.filter(m => m.id !== mediaId);
-    saveMediaToStorage();
-
-    // ส่งคำสั่งลบสื่อไปยัง Cloudflare D1 Database
-    fetch(getApiUrl(`/media?id=${encodeURIComponent(mediaId)}`), { method: 'DELETE' })
-      .catch(err => console.error('Cloudflare D1 delete error:', err));
-
     renderApp();
-    showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
+
+    try {
+      // ส่งคำสั่งลบสื่อไปยัง Cloudflare D1 Database และรอให้ลบเสร็จสิ้นก่อน
+      await fetch(getApiUrl(`/media?id=${encodeURIComponent(mediaId)}`), { method: 'DELETE' });
+      showToast('ลบสื่อการเรียนรู้เรียบร้อยแล้ว');
+      fetchLiveDataFromD1();
+    } catch (err) {
+      console.error('Cloudflare D1 delete error:', err);
+    }
   }
 }
 
