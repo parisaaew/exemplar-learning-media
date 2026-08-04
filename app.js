@@ -201,11 +201,7 @@ function fetchLiveDataFromD1() {
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data.filter(m => {
-          if (deletedMedia.has(m.id)) return false;
-          if (m.title && (m.title.includes('กหผด') || m.title.includes('ดกด') || m.academicYear === '2569')) return false;
-          return true;
-        });
+        mediaList = data.filter(m => !deletedMedia.has(m.id));
         renderApp();
       }
     })
@@ -556,6 +552,8 @@ async function handleStudentBannerSubmit(e) {
     console.warn('D1 Network Sync Notice:', err.message);
   } finally {
     mediaList.unshift(newBannerItem);
+    currentBannerImageData = null;
+    document.getElementById('studentBannerForm').reset();
     closeSubmitBannerModal();
     activeCategory = 'student-banner';
     renderApp();
