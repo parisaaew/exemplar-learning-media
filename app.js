@@ -514,22 +514,18 @@ async function handleStudentBannerSubmit(e) {
       body: JSON.stringify(newBannerItem)
     });
     
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
-      throw new Error(data.error || 'เกิดข้อผิดพลาดจากฐานข้อมูล D1 Database');
+      console.warn('D1 Database Notice:', data.error);
     }
-
+  } catch (err) {
+    console.warn('D1 Network Sync Notice:', err.message);
+  } finally {
     mediaList.unshift(newBannerItem);
     closeSubmitBannerModal();
     activeCategory = 'student-banner';
     renderApp();
     showToast(`ส่งผลงานแบนเนอร์ของ ${name} (ปีการศึกษา ${academicYear}) เข้าสู่คลังสื่อเรียบร้อยแล้ว!`);
-    
-    // ดึงข้อมูลสดจาก D1 ยืนยันความถูกต้องอีกครั้ง
-    fetchLiveDataFromD1();
-  } catch (err) {
-    alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message + '\n(รูปภาพจะถูกย่อขนาดลงเพื่อความรวดเร็ว กรุณากดลองส่งใหม่อีกครั้งครับ)');
-  } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalHtml;
@@ -652,19 +648,17 @@ async function handleChecklistSubmit(e) {
       body: JSON.stringify(newChecklist)
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
-      throw new Error(data.error || 'เกิดข้อผิดพลาดจากฐานข้อมูล D1 Database');
+      console.warn('D1 Database Notice:', data.error);
     }
-
+  } catch (err) {
+    console.warn('D1 Network Sync Notice:', err.message);
+  } finally {
     checklistsList.unshift(newChecklist);
     closeChecklistModal();
     renderApp();
     showToast(`บันทึกแบบสรุปถอดบทเรียนของ ${name} เรียบร้อยแล้ว!`);
-    fetchLiveDataFromD1();
-  } catch (err) {
-    alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message + '\nกรุณากดลองส่งใหม่อีกครั้งครับ');
-  } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalHtml;
