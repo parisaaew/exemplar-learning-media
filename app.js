@@ -429,13 +429,39 @@ function previewBannerImage(e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    currentBannerImageData = evt.target.result;
+  // บีบอัดรูปภาพให้มีขนาดย่อย (Max Width 800px, JPEG Quality 0.7)
+  // เพื่อย่อรูปจาก 5MB-10MB เหลือเพียง ~50KB ส่งเข้า D1 Database ได้เร็วและไม่ค้าง
+  compressImageFile(file, 800, 0.7, function(compressedBase64) {
+    currentBannerImageData = compressedBase64;
     const previewImg = document.getElementById('bannerImagePreview');
     const previewBox = document.getElementById('bannerImagePreviewBox');
     previewImg.src = currentBannerImageData;
     previewBox.classList.remove('hidden');
+  });
+}
+
+function compressImageFile(file, maxWidth, quality, callback) {
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+      callback(compressedDataUrl);
+    };
+    img.src = evt.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -451,7 +477,7 @@ function previewBannerUrl(e) {
   }
 }
 
-function handleStudentBannerSubmit(e) {
+async function handleStudentBannerSubmit(e) {
   e.preventDefault();
   const name = document.getElementById('bannerAuthorName').value.trim();
   const studentClass = document.getElementById('bannerStudentClass').value.trim();
@@ -481,31 +507,34 @@ function handleStudentBannerSubmit(e) {
     submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังส่งผลงานเข้า D1 Database...';
   }
 
-  mediaList.unshift(newBannerItem);
-  saveMediaToStorage();
-
-  // ส่งบันทึกตรงเข้า Cloudflare D1 Database API
-  fetch(getApiUrl('/media'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newBannerItem)
-  })
-  .then(res => res.json())
-  .then(() => {
-    // Refresh live list from D1
-    fetch(getApiUrl('/media')).then(r => r.json()).then(d => { if (Array.isArray(d)) mediaList = d; renderApp(); });
-  })
-  .catch(err => console.error('Cloudflare D1 sync error:', err))
-  .finally(() => {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalHtml;
+  try {
+    const res = await fetch(getApiUrl('/media'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newBannerItem)
+    });
+    
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'เกิดข้อผิดพลาดจากฐานข้อมูล D1 Database');
     }
+
+    mediaList.unshift(newBannerItem);
     closeSubmitBannerModal();
     activeCategory = 'student-banner';
     renderApp();
     showToast(`ส่งผลงานแบนเนอร์ของ ${name} (ปีการศึกษา ${academicYear}) เข้าสู่คลังสื่อเรียบร้อยแล้ว!`);
-  });
+    
+    // ดึงข้อมูลสดจาก D1 ยืนยันความถูกต้องอีกครั้ง
+    fetchLiveDataFromD1();
+  } catch (err) {
+    alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message + '\n(รูปภาพจะถูกย่อขนาดลงเพื่อความรวดเร็ว กรุณากดลองส่งใหม่อีกครั้งครับ)');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
+  }
 }
 
 // ==========================================
@@ -576,6 +605,64 @@ function openAvgRatingSummaryModal() {
   }
 
   document.getElementById('avgRatingSummaryModal').classList.remove('hidden');
+}
+
+async function handleChecklistSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('studentNameInput').value.trim();
+  const studentClass = document.getElementById('studentClassInput').value.trim();
+  const studentNo = document.getElementById('studentNoInput').value.trim();
+  const bestPractices = document.getElementById('bestPracticesInput').value.trim();
+  const thingsToAvoid = document.getElementById('thingsToAvoidInput').value.trim();
+  const ruleColor = document.getElementById('ruleColorInput').value.trim();
+  const ruleFont = document.getElementById('ruleFontInput').value.trim();
+  const ruleCta = document.getElementById('ruleCtaInput').value.trim();
+
+  const newChecklist = {
+    id: 'chk-' + Date.now(),
+    name,
+    studentClass,
+    studentNo,
+    bestPractices,
+    thingsToAvoid,
+    ruleColor,
+    ruleFont,
+    ruleCta,
+    timestamp: new Date().toISOString().split('T')[0]
+  };
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังส่งแบบสรุปเข้า D1 Database...';
+  }
+
+  try {
+    const res = await fetch(getApiUrl('/checklists'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newChecklist)
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || 'เกิดข้อผิดพลาดจากฐานข้อมูล D1 Database');
+    }
+
+    checklistsList.unshift(newChecklist);
+    closeChecklistModal();
+    renderApp();
+    showToast(`บันทึกแบบสรุปถอดบทเรียนของ ${name} เรียบร้อยแล้ว!`);
+    fetchLiveDataFromD1();
+  } catch (err) {
+    alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message + '\nกรุณากดลองส่งใหม่อีกครั้งครับ');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
+  }
 }
 
 function closeAvgRatingSummaryModal() {
@@ -651,61 +738,7 @@ function openChecklistModal() {
 
 function closeChecklistModal() { document.getElementById('checklistModal').classList.add('hidden'); }
 
-function handleChecklistSubmit(e) {
-  e.preventDefault();
-  const name = document.getElementById('studentName').value.trim();
-  const studentClass = document.getElementById('studentClass').value.trim();
-  const studentNo = document.getElementById('studentNo').value.trim();
-  const bestPractices = document.getElementById('bestPracticesInput').value.trim();
-  const thingsToAvoid = document.getElementById('thingsToAvoidInput').value.trim();
-  const ruleColor = document.getElementById('ruleColorInput').value.trim();
-  const ruleFont = document.getElementById('ruleFontInput').value.trim();
-  const ruleCta = document.getElementById('ruleCtaInput').value.trim();
 
-  const newChecklist = {
-    id: 'chk-' + Date.now(),
-    name,
-    studentClass,
-    studentNo,
-    bestPractices,
-    thingsToAvoid,
-    ruleColor,
-    ruleFont,
-    ruleCta,
-    timestamp: new Date().toISOString().split('T')[0]
-  };
-
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังส่งแบบสรุปเข้า D1 Database...';
-  }
-
-  checklistsList.unshift(newChecklist);
-  saveChecklistsToStorage();
-
-  // ส่งบันทึกตรงเข้า Cloudflare D1 Database API
-  fetch(getApiUrl('/checklists'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newChecklist)
-  })
-  .then(res => res.json())
-  .then(() => {
-    fetch(getApiUrl('/checklists')).then(r => r.json()).then(d => { if (Array.isArray(d)) checklistsList = d; renderApp(); });
-  })
-  .catch(err => console.error('Cloudflare D1 sync error:', err))
-  .finally(() => {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = originalHtml;
-    }
-    closeChecklistModal();
-    renderApp();
-    showToast(`บันทึกแบบสรุปถอดบทเรียนของ ${name} เรียบร้อยแล้ว!`);
-  });
-}
 
 // ==========================================
 // Teacher View Student Checklists Modal (K Assessment Records)
