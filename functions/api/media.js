@@ -13,6 +13,9 @@ export async function onRequest(context) {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   };
 
   if (method === 'OPTIONS') {
@@ -28,7 +31,7 @@ export async function onRequest(context) {
 
   try {
     // -------------------------------------------------------------
-    // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database
+    // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database (ห้ามจำแคชทุกกรณี)
     // -------------------------------------------------------------
     if (method === 'GET') {
       const { results: mediaRows } = await env.DB.prepare('SELECT * FROM media_items ORDER BY created_at DESC').all();

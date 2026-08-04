@@ -181,22 +181,21 @@ function initApp() {
 }
 
 function fetchLiveDataFromD1() {
-  const deletedMedia = getDeletedMediaIds();
-  const deletedChecklists = getDeletedChecklistIds();
+  const ts = Date.now();
 
-  // 1. ดึงรายการสื่อสดจาก Cloudflare D1 (ใส่ cache: no-store ดึงข้อมูลสด และกรองสื่อที่ถูกลบออกถาวร)
-  fetch(getApiUrl('/media'), { cache: 'no-store' })
+  // 1. ดึงรายการสื่อสดจาก Cloudflare D1 (แนบ ?_t=Timestamp บังคับ Chrome/Firefox/Edge ปล่อยแคชเก่า 100%)
+  fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        mediaList = data.filter(m => !deletedMedia.has(m.id));
+        mediaList = data;
         renderApp();
       }
     })
     .catch(err => console.error('D1 Media Fetch Error:', err));
 
   // 2. ดึงหมวดหมู่สื่อสดจาก Cloudflare D1
-  fetch(getApiUrl('/categories'), { cache: 'no-store' })
+  fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data) && data.length > 0) {
@@ -207,11 +206,11 @@ function fetchLiveDataFromD1() {
     .catch(err => console.error('D1 Categories Fetch Error:', err));
 
   // 3. ดึงสรุปบทเรียนสดจาก Cloudflare D1
-  fetch(getApiUrl('/checklists'), { cache: 'no-store' })
+  fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' })
     .then(res => res.json())
     .then(data => {
       if (Array.isArray(data)) {
-        checklistsList = data.filter(c => !deletedChecklists.has(c.id));
+        checklistsList = data;
         renderApp();
       }
     })
