@@ -172,7 +172,7 @@ function initApp() {
 }
 
 function fetchLiveDataFromD1() {
-  // ดึงรายการสื่อสดจาก Cloudflare D1
+  // 1. ดึงรายการสื่อสดจาก Cloudflare D1
   fetch(getApiUrl('/media'))
     .then(res => res.json())
     .then(data => {
@@ -183,7 +183,18 @@ function fetchLiveDataFromD1() {
     })
     .catch(err => console.error('D1 Media Fetch Error:', err));
 
-  // ดึงสรุปบทเรียนสดจาก Cloudflare D1
+  // 2. ดึงหมวดหมู่สื่อสดจาก Cloudflare D1
+  fetch(getApiUrl('/categories'))
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        categoriesList = data;
+        renderApp();
+      }
+    })
+    .catch(err => console.error('D1 Categories Fetch Error:', err));
+
+  // 3. ดึงสรุปบทเรียนสดจาก Cloudflare D1
   fetch(getApiUrl('/checklists'))
     .then(res => res.json())
     .then(data => {
@@ -1137,6 +1148,13 @@ function handleAddCategory(e) {
   categoriesList.push(newCat);
   saveCategoriesToStorage();
 
+  // ส่งบันทึกหมวดหมู่ใหม่เข้า Cloudflare D1 Database
+  fetch(getApiUrl('/categories'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newCat)
+  }).catch(err => console.error('D1 Category Add Error:', err));
+
   nameInput.value = '';
   renderCategoriesTable();
   renderApp();
@@ -1154,6 +1172,10 @@ function deleteCategory(catId) {
 
   categoriesList = categoriesList.filter(c => c.id !== catId);
   saveCategoriesToStorage();
+
+  // ส่งคำสั่งลบหมวดหมู่ออกจาก Cloudflare D1 Database
+  fetch(getApiUrl(`/categories?id=${encodeURIComponent(catId)}`), { method: 'DELETE' })
+    .catch(err => console.error('D1 Category Delete Error:', err));
 
   renderCategoriesTable();
   renderApp();
