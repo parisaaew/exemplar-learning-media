@@ -70,14 +70,26 @@ export async function onRequest(context) {
       const body = await request.json();
 
       if (body.action === 'delete') {
-        const targetId = body.id || '';
+        const targetId = (body.id || '').trim();
         let decodedId = targetId;
         try { decodedId = decodeURIComponent(targetId).trim(); } catch(e) {}
         const targetTitle = (body.title || '').trim();
+        const cleanTitle = targetTitle.replace('[ผลงานนักเรียน]', '').trim();
 
         if (targetId || targetTitle) {
-          await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ? OR (title = ? AND title != "")')
-            .bind(targetId, decodedId, targetTitle).run();
+          await env.DB.prepare(`
+            DELETE FROM media_items 
+            WHERE id = ? 
+               OR id = ? 
+               OR (title = ? AND title != "")
+               OR (title LIKE ? AND title != "")
+          `).bind(
+            targetId, 
+            decodedId, 
+            targetTitle,
+            '%' + (cleanTitle || targetTitle) + '%'
+          ).run();
+
           await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?')
             .bind(targetId, decodedId).run();
         }
