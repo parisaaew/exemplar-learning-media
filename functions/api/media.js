@@ -74,24 +74,15 @@ export async function onRequest(context) {
         let decodedId = targetId;
         try { decodedId = decodeURIComponent(targetId).trim(); } catch(e) {}
         const targetTitle = (body.title || '').trim();
-        const cleanTitle = targetTitle.replace('[ผลงานนักเรียน]', '').trim();
 
         if (targetId || targetTitle) {
-          await env.DB.prepare(`
-            DELETE FROM media_items 
-            WHERE id = ? 
-               OR id = ? 
-               OR (title = ? AND title != "")
-               OR (title LIKE ? AND title != "")
-          `).bind(
-            targetId, 
-            decodedId, 
-            targetTitle,
-            '%' + (cleanTitle || targetTitle) + '%'
-          ).run();
-
+          // 1. ลบข้อมูลดาวประเมินในตารางลูกก่อน ป้องกัน Foreign Key Constraint Failure
           await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?')
-            .bind(targetId, decodedId).run();
+            .bind(targetId, decodedId).run().catch(() => {});
+
+          // 2. ลบสื่อในตารางหลักตาม ID ตรงตัว หรือ Title ตรงตัว
+          await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ? OR (title = ? AND title != "")')
+            .bind(targetId, decodedId, targetTitle).run();
         }
 
         return new Response(JSON.stringify({ success: true, message: `ลบสื่อ ${targetId} ถาวรสำเร็จ` }), {
@@ -138,8 +129,8 @@ export async function onRequest(context) {
       let decodedId = targetId;
       try { decodedId = decodeURIComponent(targetId).trim(); } catch(e) {}
 
+      await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?').bind(targetId, decodedId).run().catch(() => {});
       await env.DB.prepare('DELETE FROM media_items WHERE id = ? OR id = ?').bind(targetId, decodedId).run();
-      await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? OR media_id = ?').bind(targetId, decodedId).run();
 
       return new Response(JSON.stringify({ success: true, message: `ลบสื่อ ${targetId} จาก D1 สำเร็จ` }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
