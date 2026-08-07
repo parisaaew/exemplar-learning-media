@@ -433,7 +433,7 @@ function renderMiniStars(score) {
 
 function openSubmitBannerModal() {
   document.getElementById('studentBannerForm').reset();
-  document.getElementById('bannerAcademicYear').value = '2567';
+  document.getElementById('bannerAcademicYear').value = '2569';
   document.getElementById('bannerImagePreviewBox').classList.add('hidden');
   currentBannerImageData = '';
   document.getElementById('submitBannerModal').classList.remove('hidden');
