@@ -500,7 +500,7 @@ async function handleStudentBannerSubmit(e) {
   const name = document.getElementById('bannerAuthorName').value.trim();
   const studentClass = document.getElementById('bannerStudentClass').value.trim();
   const studentNo = document.getElementById('bannerStudentNo').value.trim();
-  const academicYear = document.getElementById('bannerAcademicYear').value.trim() || '2567';
+  const academicYear = document.getElementById('bannerAcademicYear').value.trim() || '2569';
   const title = document.getElementById('bannerTitleInput').value.trim();
   const concept = document.getElementById('bannerConceptInput').value.trim();
 
@@ -994,7 +994,7 @@ function openMediaViewer(mediaId) {
   document.getElementById('viewerTitle').textContent = item.title;
   document.getElementById('viewerDescription').textContent = item.description || '';
   document.getElementById('viewerCategoryBadge').textContent = catObj ? catObj.name.toUpperCase() : item.category.toUpperCase();
-  document.getElementById('viewerYearBadge').textContent = `ปีการศึกษา ${item.academicYear || '2567'}`;
+  document.getElementById('viewerYearBadge').textContent = `ปีการศึกษา ${item.academicYear || '2569'}`;
   
   const tagsContainer = document.getElementById('viewerTags');
   tagsContainer.innerHTML = (item.tags || []).map(t => `<span class="tag-chip">#${t}</span>`).join('');
@@ -1224,7 +1224,7 @@ function openEditMediaModal(mediaId) {
   document.getElementById('editMediaId').value = item.id;
   document.getElementById('formTitle').value = item.title;
   document.getElementById('formCategory').value = item.category;
-  document.getElementById('formAcademicYear').value = item.academicYear || '2567';
+  document.getElementById('formAcademicYear').value = item.academicYear || '2569';
   document.getElementById('formUrl').value = item.url;
   document.getElementById('formThumbnail').value = item.thumbnail || '';
   document.getElementById('formTags').value = (item.tags || []).join(', ');
