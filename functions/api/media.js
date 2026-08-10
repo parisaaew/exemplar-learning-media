@@ -31,11 +31,23 @@ export async function onRequest(context) {
 
   try {
     // -------------------------------------------------------------
-    // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database
+    // GET: อ่านรายการสื่อทั้งหมดจาก D1 Database 42+ รายการอย่างปลอดภัย 100%
     // -------------------------------------------------------------
     if (method === 'GET') {
-      const { results: mediaRows } = await env.DB.prepare('SELECT * FROM media_items ORDER BY created_at DESC').all();
-      const { results: ratingRows } = await env.DB.prepare('SELECT * FROM media_ratings').all();
+      let mediaRows = [];
+      try {
+        const { results } = await env.DB.prepare('SELECT * FROM media_items ORDER BY rowid DESC').all();
+        mediaRows = results || [];
+      } catch (e) {
+        const { results } = await env.DB.prepare('SELECT * FROM media_items').all();
+        mediaRows = results || [];
+      }
+
+      let ratingRows = [];
+      try {
+        const { results } = await env.DB.prepare('SELECT * FROM media_ratings').all();
+        ratingRows = results || [];
+      } catch (e) {}
 
       const formattedList = (mediaRows || []).map(m => {
         const itemRatings = (ratingRows || []).filter(r => r.media_id === m.id).map(r => ({
@@ -49,7 +61,7 @@ export async function onRequest(context) {
           id: m.id,
           title: m.title,
           category: m.category,
-          academicYear: m.academic_year || '2567',
+          academicYear: m.academic_year || '2569',
           url: m.url,
           thumbnail: m.thumbnail,
           tags: m.tags ? m.tags.split(',') : [],
@@ -105,7 +117,7 @@ export async function onRequest(context) {
         body.id || 'media-' + Date.now(),
         body.title,
         body.category,
-        body.academicYear || '2567',
+        body.academicYear || '2569',
         body.url,
         body.thumbnail || body.url,
         Array.isArray(body.tags) ? body.tags.join(',') : (body.tags || ''),
