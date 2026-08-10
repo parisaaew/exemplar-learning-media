@@ -1235,8 +1235,16 @@ function openEditMediaModal(mediaId) {
 
 function closeAddEditModal() { document.getElementById('addEditMediaModal').classList.add('hidden'); }
 
-function handleSaveMedia(e) {
-  e.preventDefault();
+async function handleSaveMedia(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> กำลังบันทึกข้อมูล...';
+  }
+
   const editId = document.getElementById('editMediaId').value;
   const title = document.getElementById('formTitle').value.trim();
   const category = document.getElementById('formCategory').value;
@@ -1248,6 +1256,8 @@ function handleSaveMedia(e) {
 
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
 
+  let mediaItemToSave = null;
+
   if (editId) {
     const item = mediaList.find(m => m.id === editId);
     if (item) {
@@ -1258,18 +1268,10 @@ function handleSaveMedia(e) {
       item.thumbnail = thumbnail;
       item.tags = tags;
       item.description = description;
-
-      // ส่งอัปเดตเข้า Cloudflare D1 Database
-      fetch(getApiUrl('/media'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      }).catch(err => console.error('Cloudflare D1 sync error:', err));
-
-      showToast('อัปเดตข้อมูลสื่อสำเร็จ');
+      mediaItemToSave = item;
     }
   } else {
-    const newItem = {
+    mediaItemToSave = {
       id: 'media-' + Date.now(),
       title,
       category,
@@ -1280,21 +1282,33 @@ function handleSaveMedia(e) {
       description,
       ratings: []
     };
-    mediaList.unshift(newItem);
-
-    // ส่งบันทึกสื่อใหม่เข้า Cloudflare D1 Database
-    fetch(getApiUrl('/media'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newItem)
-    }).catch(err => console.error('Cloudflare D1 sync error:', err));
-
-    showToast('เพิ่มสื่อการเรียนรู้ใหม่สำเร็จ');
+    mediaList.unshift(mediaItemToSave);
   }
 
-  saveMediaToStorage();
+  // 1. สั่งปิดหน้าต่างแก้ไขสื่อทันที 100%
   closeAddEditModal();
-  renderApp();
+
+  // 2. ส่งข้อมูลบันทึกเข้า Cloudflare D1 Database
+  if (mediaItemToSave) {
+    try {
+      await fetch(getApiUrl('/media'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mediaItemToSave)
+      });
+      showToast(editId ? 'อัปเดตข้อมูลสื่อสำเร็จ' : 'เพิ่มสื่อการเรียนรู้ใหม่สำเร็จ');
+    } catch (err) {
+      console.error('Cloudflare D1 sync error:', err);
+    } finally {
+      saveMediaToStorage();
+      fetchLiveDataFromD1();
+      renderApp();
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+      }
+    }
+  }
 }
 
 async function confirmDeleteMedia(e, mediaId) {
