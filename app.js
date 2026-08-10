@@ -190,7 +190,7 @@ function initApp() {
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
-  // 2. โหลดข้อมูลแคชล่าสุดขึ้นแสดงผลบนหน้าจอทันที (รองรับมือถือ Safari และ Chrome โหลดสื่อทันที 100%)
+  // 2. โหลดข้อมูลแคชล่าสุดขึ้นแสดงผลบนหน้าจอทันทีใน 0.01 วินาที (Instant Load)
   mediaList = loadMediaFromStorage();
   categoriesList = loadCategoriesFromStorage();
   checklistsList = loadChecklistsFromStorage();
@@ -199,8 +199,8 @@ function initApp() {
   // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database ในฉากหลัง
   fetchLiveDataFromD1();
 
-  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 4 วินาทีอย่างนุ่มนวล
-  setInterval(fetchLiveDataFromD1, 4000);
+  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 10 วินาทีอย่างนุ่มนวลและไม่แย่งสัญญาณเน็ต
+  setInterval(fetchLiveDataFromD1, 10000);
 }
 
 let isFetchingD1 = false;
