@@ -23,11 +23,104 @@ const INITIAL_CATEGORIES = [
   { id: 'document', name: 'ใบความรู้/เอกสาร', icon: 'fa-file-lines', badgeClass: 'badge-document' }
 ];
 
-// ข้อมูลสื่อเริ่มต้น (อ้างอิงตรงจาก Cloudflare D1 Database)
-const INITIAL_MEDIA_DATA = [];
+// ข้อมูลสื่อเริ่มต้น
+const INITIAL_MEDIA_DATA = [
+  {
+    id: 'media-1',
+    title: 'เว็บไซต์ผลงานพอร์ตโฟลิโอดิจิทัล (Student Portfolio Website)',
+    category: 'website',
+    academicYear: '2567',
+    url: 'https://example.com/portfolio-m3',
+    thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
+    tags: ['HTML5', 'CSS Grid', 'UX/UI', 'พอร์ตโฟลิโอ'],
+    description: 'ผลงานเว็บไซต์ส่วนตัวสำหรับจัดเก็บผลงาน ออกแบบด้วยโครงสร้าง Grid System เน้นอ่านง่าย อ่านสบายตา และมีจุดนำสายตาชัดเจน',
+    ratings: [
+      { readability: 5, visualHarmony: 5, focusCta: 4, reflection: 'จัดวางเมนูหัวข้ออ่านง่ายมาก สีตัวหนังสือตัดกับพื้นหลังดี', timestamp: '2026-08-01' },
+      { readability: 4, visualHarmony: 5, focusCta: 5, reflection: 'ใช้โทนสี Indigo คมชัดและทันสมัย อยากนำโครงสร้างนี้ไปใช้กับเว็บตนเอง', timestamp: '2026-08-02' }
+    ]
+  },
+  {
+    id: 'media-2',
+    title: 'แบนเนอร์ประชาสัมพันธ์กิจกรรมเทคโนโลยี (Best Practice Banner)',
+    category: 'banner',
+    academicYear: '2567',
+    url: 'https://images.unsplash.com/photo-1542744094-3a31b272c490?auto=format&fit=crop&w=1200&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1542744094-3a31b272c490?auto=format&fit=crop&w=800&q=80',
+    tags: ['Graphic Design', 'Banner', 'Contrast', 'การนำสายตา'],
+    description: 'ตัวอย่างแบนเนอร์สื่อความหมายที่ดี มีพอยท์เน้นจุดสนใจชัดเจน (Focus & CTA) ใช้หลักการความต่างระดับสี (Color Contrast)',
+    ratings: [
+      { readability: 5, visualHarmony: 4, focusCta: 5, reflection: 'ปุ่ม Call to Action โดดเด่น มองเห็นได้ทันทีตั้งแต่แรกเห็น', timestamp: '2026-08-02' }
+    ]
+  },
+  {
+    id: 'media-3',
+    title: 'วิดีโอแนะนำหลักการออกแบบ UX/UI สำหรับนักเรียน',
+    category: 'video',
+    academicYear: '2567',
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    thumbnail: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=800&q=80',
+    tags: ['UX/UI Video', 'Tutorial', 'Visual Design'],
+    description: 'วิดีโอความยาว 5 นาที สรุปหลักการเลือกใช้สี ตัวอักษร และการจัดวาง Layout ในการสร้างสรรค์สื่อดิจิทัลให้ตรงกลุ่มเป้าหมาย',
+    ratings: [
+      { readability: 4, visualHarmony: 5, focusCta: 4, reflection: 'วิดีโอมีภาพประกอบชัดเจน เข้าใจง่าย การบรรยายไม่ช้าหรือเร็วเกินไป', timestamp: '2026-08-03' }
+    ]
+  },
+  {
+    id: 'media-4',
+    title: 'ใบความรู้เรื่องการออกแบบ Wireframe & User Journey Map',
+    category: 'document',
+    academicYear: '2567',
+    url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    thumbnail: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&w=800&q=80',
+    tags: ['Document', 'PDF', 'Wireframe', 'ใบความรู้'],
+    description: 'เอกสารสรุปขั้นตอนการวางแผนสร้างเว็บด้วย Wireframe 8 ขั้นตอน พร้อมตัวอย่างการร่างภาพก่อนลงมือเขียนโค้ดจริง',
+    ratings: [
+      { readability: 5, visualHarmony: 4, focusCta: 4, reflection: 'มีแผนภาพตัวอย่างชัดเจน ช่วยให้ออกแบบร่างเว็บได้ง่ายขึ้นมาก', timestamp: '2026-08-03' }
+    ]
+  },
+  {
+    id: 'media-5',
+    title: 'เว็บไซต์ระบบลงทะเบียนกิจกรรมชมรมคอมพิวเตอร์',
+    category: 'website',
+    academicYear: '2566',
+    url: 'https://example.com/club-reg',
+    thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+    tags: ['Web Application', 'Form Design', 'UI Component'],
+    description: 'เว็บไซต์แอพพลิเคชันตัวอย่างการสร้างฟอร์มกรอกข้อมูล และปุ่มกดโต้ตอบ (Interactive Buttons) ดีไซน์เรียบหรูสไตล์ Minimal',
+    ratings: [
+      { readability: 4, visualHarmony: 4, focusCta: 5, reflection: 'ฟอร์มใช้ง่าย ปุ่มกดส่งข้อมูลสะดุดตาดีมาก', timestamp: '2026-08-01' }
+    ]
+  },
+  {
+    id: 'media-6',
+    title: 'ชุดสื่อนำเสนอ Infographic เรื่อง ความปลอดภัยในโลกไซเบอร์',
+    category: 'banner',
+    academicYear: '2567',
+    url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
+    tags: ['Infographic', 'Cyber Security', 'Visual Communication'],
+    description: 'สื่ออินโฟกราฟิกนำเสนอข้อมูลความปลอดภัยด้วยไอคอนและตัวเลขสถิติ ใช้โทนสีเขียว-น้ำเงินสื่อถึงความน่าเชื่อถือ',
+    ratings: [
+      { readability: 5, visualHarmony: 5, focusCta: 4, reflection: 'แบ่งหมวดหมู่เนื้อหาได้เป็นสัดส่วน ไอคอนสื่อความหมายดีมาก', timestamp: '2026-08-03' }
+    ]
+  }
+];
 
 // ข้อมูลสรุปถอดบทเรียนรายบุคคลเริ่มต้น
-const INITIAL_CHECKLISTS_DATA = [];
+const INITIAL_CHECKLISTS_DATA = [
+  {
+    id: 'chk-1',
+    name: 'ด.ช.สมชาย ใจดี',
+    studentClass: 'ม.3/1',
+    studentNo: '5',
+    bestPractices: 'ใช้สีตัวหนังสือคมชัดตัดกับพื้นหลัง จัดวางเป็นสัดส่วน มีปุ่ม CTA โดดเด่นอ่านง่าย',
+    thingsToAvoid: 'หลีกเลี่ยงการใช้ฟอนต์ตัวหนังสืออ่านยากเกิน 3 ฟอนต์ และการใช้สีฉูดฉาดสะท้อนตา',
+    ruleColor: 'ใช้โทนสีเย็น (Indigo) เป็นหลัก สลับสีขาว ไม่เกิน 3 สี',
+    ruleFont: 'ใช้ฟอนต์ไม่มีหัวอ่านง่าย จัดขนาดหัวข้อ 24px และเนื้อหา 16px',
+    ruleCta: 'ใส่ปุ่มกดสีส้ม/ชมพูตรงกลางภาพเพื่อนำสายตา',
+    timestamp: '2026-08-03'
+  }
+];
 
 // App State Global Variables
 let mediaList = [];
@@ -69,74 +162,37 @@ function markChecklistAsDeleted(id) {
   localStorage.setItem(STORAGE_KEY_DELETED_CHECKLISTS, JSON.stringify(Array.from(set)));
 }
 
-function loadMediaFromStorage() {
-  const storedMedia = localStorage.getItem(STORAGE_KEY_MEDIA);
-  if (storedMedia) {
-    try { 
-      const parsed = JSON.parse(storedMedia);
-      // หากพบข้อมูลจำลองตัวอย่างเก่า (media-1) ให้ล้างแคชเก่าทิ้งเพื่อโหลด D1 จริง
-      if (Array.isArray(parsed) && parsed.some(m => m.id === 'media-1' || m.id === 'media-2')) {
-        localStorage.removeItem(STORAGE_KEY_MEDIA);
-        return [];
-      }
-      return parsed; 
-    } catch (e) { return []; }
-  }
-  return [];
-}
-
-function loadCategoriesFromStorage() {
-  const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
-  if (storedCats) {
-    try { return JSON.parse(storedCats); } catch (e) { return [...INITIAL_CATEGORIES]; }
-  }
-  return [...INITIAL_CATEGORIES];
-}
-
-function loadChecklistsFromStorage() {
-  const storedChecklists = localStorage.getItem(STORAGE_KEY_CHECKLISTS);
-  if (storedChecklists) {
-    try { return JSON.parse(storedChecklists); } catch (e) { return []; }
-  }
-  return [];
-}
-
 function initApp() {
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
-  // 2. โหลดข้อมูลแคชล่าสุดขึ้นแสดงผลบนหน้าจอทันทีใน 0.01 วินาที
-  mediaList = loadMediaFromStorage();
-  categoriesList = loadCategoriesFromStorage();
-  checklistsList = loadChecklistsFromStorage();
-  renderApp();
+  // 2. ล้างความจำแคชเก่าชั่วคราวออก
+  localStorage.removeItem(STORAGE_KEY_MEDIA);
+  localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
+  localStorage.removeItem(STORAGE_KEY_CATEGORIES);
 
-  // 3. ดึงข้อมูลสดล่าสุดจาก Cloudflare D1 Database ในฉากหลังทันที
+  // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database
   fetchLiveDataFromD1();
 
   // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 3 วินาทีอัตโนมัติ
   setInterval(fetchLiveDataFromD1, 3000);
+
+  renderApp();
 }
 
-let isFetchingD1 = false;
-
 function fetchLiveDataFromD1() {
-  if (isFetchingD1) return;
-  isFetchingD1 = true;
-
   const ts = Date.now();
 
   Promise.all([
-    fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => null),
-    fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => null),
-    fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => null)
+    fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null)
   ]).then(([mediaData, categoriesData, checklistsData]) => {
     let hasChanged = false;
 
-    if (Array.isArray(mediaData) && mediaData.length >= 0) {
+    if (Array.isArray(mediaData)) {
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
-        saveMediaToStorage();
         hasChanged = true;
       }
     }
@@ -144,7 +200,6 @@ function fetchLiveDataFromD1() {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
       if (JSON.stringify(categoriesData) !== JSON.stringify(categoriesList)) {
         categoriesList = categoriesData;
-        saveCategoriesToStorage();
         hasChanged = true;
       }
     }
@@ -152,7 +207,6 @@ function fetchLiveDataFromD1() {
     if (Array.isArray(checklistsData)) {
       if (JSON.stringify(checklistsData) !== JSON.stringify(checklistsList)) {
         checklistsList = checklistsData;
-        saveChecklistsToStorage();
         hasChanged = true;
       }
     }
@@ -161,30 +215,12 @@ function fetchLiveDataFromD1() {
     if (hasChanged) {
       renderApp();
     }
-  }).catch(err => {
-    console.error('Fetch D1 Error:', err);
-  }).finally(() => {
-    isFetchingD1 = false;
   });
 }
 
-function saveMediaToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList));
-  } catch (e) {
-    console.warn('LocalStorage quota limit reached for media items:', e);
-  }
-}
-function saveCategoriesToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categoriesList));
-  } catch (e) {}
-}
-function saveChecklistsToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList));
-  } catch (e) {}
-}
+function saveMediaToStorage() { localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList)); }
+function saveCategoriesToStorage() { localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categoriesList)); }
+function saveChecklistsToStorage() { localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList)); }
 
 // ==========================================
 // Main Rendering Engine
