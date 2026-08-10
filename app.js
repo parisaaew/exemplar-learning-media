@@ -118,7 +118,12 @@ function initApp() {
   setInterval(fetchLiveDataFromD1, 3000);
 }
 
+let isFetchingD1 = false;
+
 function fetchLiveDataFromD1() {
+  if (isFetchingD1) return;
+  isFetchingD1 = true;
+
   const ts = Date.now();
 
   Promise.all([
@@ -128,7 +133,7 @@ function fetchLiveDataFromD1() {
   ]).then(([mediaData, categoriesData, checklistsData]) => {
     let hasChanged = false;
 
-    if (Array.isArray(mediaData)) {
+    if (Array.isArray(mediaData) && mediaData.length >= 0) {
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
         saveMediaToStorage();
@@ -156,12 +161,30 @@ function fetchLiveDataFromD1() {
     if (hasChanged) {
       renderApp();
     }
+  }).catch(err => {
+    console.error('Fetch D1 Error:', err);
+  }).finally(() => {
+    isFetchingD1 = false;
   });
 }
 
-function saveMediaToStorage() { localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList)); }
-function saveCategoriesToStorage() { localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categoriesList)); }
-function saveChecklistsToStorage() { localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList)); }
+function saveMediaToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList));
+  } catch (e) {
+    console.warn('LocalStorage quota limit reached for media items:', e);
+  }
+}
+function saveCategoriesToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categoriesList));
+  } catch (e) {}
+}
+function saveChecklistsToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList));
+  } catch (e) {}
+}
 
 // ==========================================
 // Main Rendering Engine
