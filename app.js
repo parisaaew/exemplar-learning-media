@@ -162,37 +162,66 @@ function markChecklistAsDeleted(id) {
   localStorage.setItem(STORAGE_KEY_DELETED_CHECKLISTS, JSON.stringify(Array.from(set)));
 }
 
+function loadMediaFromStorage() {
+  const storedMedia = localStorage.getItem(STORAGE_KEY_MEDIA);
+  if (storedMedia) {
+    try { return JSON.parse(storedMedia); } catch (e) { return [...INITIAL_MEDIA_DATA]; }
+  }
+  return [...INITIAL_MEDIA_DATA];
+}
+
+function loadCategoriesFromStorage() {
+  const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
+  if (storedCats) {
+    try { return JSON.parse(storedCats); } catch (e) { return [...INITIAL_CATEGORIES]; }
+  }
+  return [...INITIAL_CATEGORIES];
+}
+
+function loadChecklistsFromStorage() {
+  const storedChecklists = localStorage.getItem(STORAGE_KEY_CHECKLISTS);
+  if (storedChecklists) {
+    try { return JSON.parse(storedChecklists); } catch (e) { return [...INITIAL_CHECKLISTS_DATA]; }
+  }
+  return [...INITIAL_CHECKLISTS_DATA];
+}
+
 function initApp() {
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
-  // 2. ล้างความจำแคชเก่าชั่วคราวออก
-  localStorage.removeItem(STORAGE_KEY_MEDIA);
-  localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
-  localStorage.removeItem(STORAGE_KEY_CATEGORIES);
+  // 2. โหลดข้อมูลแคชล่าสุดขึ้นแสดงผลบนหน้าจอทันที (รองรับมือถือ Safari และ Chrome โหลดสื่อทันที 100%)
+  mediaList = loadMediaFromStorage();
+  categoriesList = loadCategoriesFromStorage();
+  checklistsList = loadChecklistsFromStorage();
+  renderApp();
 
-  // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database
+  // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database ในฉากหลัง
   fetchLiveDataFromD1();
 
-  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 3 วินาทีอัตโนมัติ
-  setInterval(fetchLiveDataFromD1, 3000);
-
-  renderApp();
+  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 4 วินาทีอย่างนุ่มนวล
+  setInterval(fetchLiveDataFromD1, 4000);
 }
 
+let isFetchingD1 = false;
+
 function fetchLiveDataFromD1() {
+  if (isFetchingD1) return;
+  isFetchingD1 = true;
+
   const ts = Date.now();
 
   Promise.all([
-    fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+    fetch(getApiUrl('/media?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(getApiUrl('/categories?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(getApiUrl('/checklists?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null)
   ]).then(([mediaData, categoriesData, checklistsData]) => {
     let hasChanged = false;
 
-    if (Array.isArray(mediaData)) {
+    if (Array.isArray(mediaData) && mediaData.length > 0) {
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
+        saveMediaToStorage();
         hasChanged = true;
       }
     }
@@ -200,6 +229,7 @@ function fetchLiveDataFromD1() {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
       if (JSON.stringify(categoriesData) !== JSON.stringify(categoriesList)) {
         categoriesList = categoriesData;
+        saveCategoriesToStorage();
         hasChanged = true;
       }
     }
@@ -207,6 +237,7 @@ function fetchLiveDataFromD1() {
     if (Array.isArray(checklistsData)) {
       if (JSON.stringify(checklistsData) !== JSON.stringify(checklistsList)) {
         checklistsList = checklistsData;
+        saveChecklistsToStorage();
         hasChanged = true;
       }
     }
@@ -215,12 +246,30 @@ function fetchLiveDataFromD1() {
     if (hasChanged) {
       renderApp();
     }
+  }).catch(err => {
+    console.error('Fetch D1 Error:', err);
+  }).finally(() => {
+    isFetchingD1 = false;
   });
 }
 
-function saveMediaToStorage() { localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList)); }
-function saveCategoriesToStorage() { localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categoriesList)); }
-function saveChecklistsToStorage() { localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList)); }
+function saveMediaToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList));
+  } catch (e) {
+    console.warn('LocalStorage limit reached for media items');
+  }
+}
+function saveCategoriesToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categoriesList));
+  } catch (e) {}
+}
+function saveChecklistsToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList));
+  } catch (e) {}
+}
 
 // ==========================================
 // Main Rendering Engine
