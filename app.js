@@ -162,37 +162,76 @@ function markChecklistAsDeleted(id) {
   localStorage.setItem(STORAGE_KEY_DELETED_CHECKLISTS, JSON.stringify(Array.from(set)));
 }
 
+function loadMediaFromStorage() {
+  const storedMedia = localStorage.getItem(STORAGE_KEY_MEDIA);
+  if (storedMedia) {
+    try { return JSON.parse(storedMedia); } catch (e) { return [...INITIAL_MEDIA_DATA]; }
+  }
+  return [...INITIAL_MEDIA_DATA];
+}
+
+function loadCategoriesFromStorage() {
+  const storedCats = localStorage.getItem(STORAGE_KEY_CATEGORIES);
+  if (storedCats) {
+    try { return JSON.parse(storedCats); } catch (e) { return [...INITIAL_CATEGORIES]; }
+  }
+  return [...INITIAL_CATEGORIES];
+}
+
+function loadChecklistsFromStorage() {
+  const storedChecklists = localStorage.getItem(STORAGE_KEY_CHECKLISTS);
+  if (storedChecklists) {
+    try { return JSON.parse(storedChecklists); } catch (e) { return [...INITIAL_CHECKLISTS_DATA]; }
+  }
+  return [...INITIAL_CHECKLISTS_DATA];
+}
+
 function initApp() {
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
-  // 2. ล้างความจำแคชเก่าชั่วคราวออก
-  localStorage.removeItem(STORAGE_KEY_MEDIA);
-  localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
-  localStorage.removeItem(STORAGE_KEY_CATEGORIES);
+  // 2. โหลดข้อมูลแคชล่าสุดขึ้นแสดงผลบนหน้าจอทันทีใน 0.01 วินาที (Instant Load SWR Engine)
+  mediaList = loadMediaFromStorage();
+  categoriesList = loadCategoriesFromStorage();
+  checklistsList = loadChecklistsFromStorage();
+  renderApp();
 
-  // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database
+  // 3. ดึงข้อมูลสดล่าสุดจาก Cloudflare D1 Database ในฉากหลังทันที
   fetchLiveDataFromD1();
 
   // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 3 วินาทีอัตโนมัติ
   setInterval(fetchLiveDataFromD1, 3000);
-
-  renderApp();
 }
 
 function fetchLiveDataFromD1() {
   const ts = Date.now();
 
+  const fetchWithTimeout = (url, timeoutMs = 5000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { cache: 'no-store', signal: controller.signal })
+      .then(r => {
+        clearTimeout(timer);
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        return null;
+      });
+  };
+
   Promise.all([
-    fetch(getApiUrl('/media?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(getApiUrl('/categories?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(getApiUrl('/checklists?_t=' + ts), { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+    fetchWithTimeout(getApiUrl('/media?_t=' + ts)),
+    fetchWithTimeout(getApiUrl('/categories?_t=' + ts)),
+    fetchWithTimeout(getApiUrl('/checklists?_t=' + ts))
   ]).then(([mediaData, categoriesData, checklistsData]) => {
     let hasChanged = false;
 
     if (Array.isArray(mediaData)) {
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
+        saveMediaToStorage();
         hasChanged = true;
       }
     }
@@ -200,6 +239,7 @@ function fetchLiveDataFromD1() {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
       if (JSON.stringify(categoriesData) !== JSON.stringify(categoriesList)) {
         categoriesList = categoriesData;
+        saveCategoriesToStorage();
         hasChanged = true;
       }
     }
@@ -207,6 +247,7 @@ function fetchLiveDataFromD1() {
     if (Array.isArray(checklistsData)) {
       if (JSON.stringify(checklistsData) !== JSON.stringify(checklistsList)) {
         checklistsList = checklistsData;
+        saveChecklistsToStorage();
         hasChanged = true;
       }
     }
@@ -216,28 +257,6 @@ function fetchLiveDataFromD1() {
       renderApp();
     }
   });
-}
-
-function loadMediaLocalFallback() {
-  const storedMedia = localStorage.getItem(STORAGE_KEY_MEDIA);
-  if (storedMedia) {
-    try { mediaList = JSON.parse(storedMedia); } catch (e) { mediaList = [...INITIAL_MEDIA_DATA]; }
-  } else {
-    mediaList = [...INITIAL_MEDIA_DATA];
-    saveMediaToStorage();
-  }
-  renderApp();
-}
-
-function loadChecklistsLocalFallback() {
-  const storedChecklists = localStorage.getItem(STORAGE_KEY_CHECKLISTS);
-  if (storedChecklists) {
-    try { checklistsList = JSON.parse(storedChecklists); } catch (e) { checklistsList = [...INITIAL_CHECKLISTS_DATA]; }
-  } else {
-    checklistsList = [...INITIAL_CHECKLISTS_DATA];
-    saveChecklistsToStorage();
-  }
-  renderApp();
 }
 
 function saveMediaToStorage() { localStorage.setItem(STORAGE_KEY_MEDIA, JSON.stringify(mediaList)); }
