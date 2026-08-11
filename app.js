@@ -7,6 +7,7 @@
 const STORAGE_KEY_MEDIA = 'exemplar_media_items_v1';
 const STORAGE_KEY_CATEGORIES = 'exemplar_categories_v1';
 const STORAGE_KEY_CHECKLISTS = 'exemplar_checklists_v1';
+const STORAGE_KEY_SELF_ASSESSMENTS = 'exemplar_self_assessments_v1';
 const ADMIN_PASSCODE = 'admin121314';
 
 // Cloudflare Integration Ready Config (Cloudflare Pages Functions Engine)
@@ -126,6 +127,7 @@ const INITIAL_CHECKLISTS_DATA = [
 let mediaList = [];
 let categoriesList = [];
 let checklistsList = [];
+let selfAssessmentsList = [];
 let activeCategory = 'all';
 let searchQuery = '';
 let isAdminLoggedIn = false;
@@ -186,6 +188,14 @@ function loadChecklistsFromStorage() {
   return [...INITIAL_CHECKLISTS_DATA];
 }
 
+function loadSelfAssessmentsFromStorage() {
+  const storedSelf = localStorage.getItem(STORAGE_KEY_SELF_ASSESSMENTS);
+  if (storedSelf) {
+    try { return JSON.parse(storedSelf); } catch (e) { return []; }
+  }
+  return [];
+}
+
 function initApp() {
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
@@ -194,6 +204,7 @@ function initApp() {
   mediaList = loadMediaFromStorage();
   categoriesList = loadCategoriesFromStorage();
   checklistsList = loadChecklistsFromStorage();
+  selfAssessmentsList = loadSelfAssessmentsFromStorage();
   renderApp();
 
   // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database ในฉากหลัง
@@ -214,8 +225,9 @@ function fetchLiveDataFromD1() {
   Promise.all([
     fetch(getApiUrl('/media?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(getApiUrl('/categories?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(getApiUrl('/checklists?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null)
-  ]).then(([mediaData, categoriesData, checklistsData]) => {
+    fetch(getApiUrl('/checklists?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(getApiUrl('/self-assessments?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null)
+  ]).then(([mediaData, categoriesData, checklistsData, selfAssessmentsData]) => {
     let hasChanged = false;
 
     if (Array.isArray(mediaData) && mediaData.length > 0) {
@@ -238,6 +250,14 @@ function fetchLiveDataFromD1() {
       if (JSON.stringify(checklistsData) !== JSON.stringify(checklistsList)) {
         checklistsList = checklistsData;
         saveChecklistsToStorage();
+        hasChanged = true;
+      }
+    }
+
+    if (Array.isArray(selfAssessmentsData)) {
+      if (JSON.stringify(selfAssessmentsData) !== JSON.stringify(selfAssessmentsList)) {
+        selfAssessmentsList = selfAssessmentsData;
+        saveSelfAssessmentsToStorage();
         hasChanged = true;
       }
     }
@@ -270,6 +290,11 @@ function saveChecklistsToStorage() {
     localStorage.setItem(STORAGE_KEY_CHECKLISTS, JSON.stringify(checklistsList));
   } catch (e) {}
 }
+function saveSelfAssessmentsToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY_SELF_ASSESSMENTS, JSON.stringify(selfAssessmentsList));
+  } catch (e) {}
+}
 
 // ==========================================
 // Main Rendering Engine
@@ -297,10 +322,17 @@ function renderStats() {
 
   const overallAvg = totalMedia > 0 && totalReviews > 0 ? (sumRatingTotal / totalMedia).toFixed(1) : '0.0';
 
-  document.getElementById('totalMediaStat').textContent = totalMedia;
-  document.getElementById('avgRatingStat').textContent = overallAvg;
-  document.getElementById('totalReviewsStat').textContent = totalReviews;
-  document.getElementById('totalChecklistsStat').textContent = checklistsList.length;
+  const totalMediaEl = document.getElementById('totalMediaStat');
+  const avgRatingEl = document.getElementById('avgRatingStat');
+  const totalReviewsEl = document.getElementById('totalReviewsStat');
+  const totalChecklistsEl = document.getElementById('totalChecklistsStat');
+  const totalSelfEl = document.getElementById('totalSelfAssessmentsStat');
+
+  if (totalMediaEl) totalMediaEl.textContent = totalMedia;
+  if (avgRatingEl) avgRatingEl.textContent = overallAvg;
+  if (totalReviewsEl) totalReviewsEl.textContent = totalReviews;
+  if (totalChecklistsEl) totalChecklistsEl.textContent = checklistsList.length;
+  if (totalSelfEl) totalSelfEl.textContent = selfAssessmentsList.length;
 }
 
 function renderFilterTabs() {
@@ -765,10 +797,18 @@ function setupEventListeners() {
 
   document.getElementById('exitAdminBtn').addEventListener('click', exitAdminMode);
   document.getElementById('openSubmitBannerModalBtn').addEventListener('click', openSubmitBannerModal);
+
+  const openSelfBtn = document.getElementById('openSelfAssessmentModalBtn');
+  if (openSelfBtn) openSelfBtn.addEventListener('click', openSelfAssessmentModal);
+
   document.getElementById('openAddMediaModalBtn').addEventListener('click', openAddMediaModal);
   document.getElementById('openManageCategoriesModalBtn').addEventListener('click', openManageCategoriesModal);
   document.getElementById('openChecklistModalBtn').addEventListener('click', openChecklistModal);
   document.getElementById('openViewChecklistsModalBtn').addEventListener('click', openViewChecklistsModal);
+
+  const openViewSelfBtn = document.getElementById('openViewSelfAssessmentsModalBtn');
+  if (openViewSelfBtn) openViewSelfBtn.addEventListener('click', openViewSelfAssessmentsModal);
+
   document.getElementById('exportCsvBtn').addEventListener('click', exportRatingsCSV);
   document.getElementById('rubricGuideBtn').addEventListener('click', openRubricModal);
 
@@ -908,6 +948,174 @@ function exportChecklistsCSV() {
   document.body.removeChild(link);
 
   showToast('ดาวน์โหลดไฟล์ CSV ผลสรุปถอดบทเรียนเรียบร้อยแล้ว');
+}
+
+// ==========================================
+// Student Self-Assessment Modal Handlers
+// ==========================================
+
+function openSelfAssessmentModal() {
+  document.getElementById('selfStudentName').value = '';
+  document.getElementById('selfStudentClass').value = '';
+  document.getElementById('selfStudentNo').value = '';
+  document.getElementById('selfQ1Input').value = '';
+  document.getElementById('selfQ2Input').value = '';
+  document.getElementById('selfQ3Input').value = '';
+
+  document.getElementById('selfAssessmentModal').classList.remove('hidden');
+}
+
+function closeSelfAssessmentModal() {
+  document.getElementById('selfAssessmentModal').classList.add('hidden');
+}
+
+async function handleSelfAssessmentSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('selfStudentName').value.trim();
+  const studentClass = document.getElementById('selfStudentClass').value.trim();
+  const studentNo = document.getElementById('selfStudentNo').value.trim();
+  const q1Discovery = document.getElementById('selfQ1Input').value.trim();
+  const q2KeyRule = document.getElementById('selfQ2Input').value.trim();
+  const q3Improvement = document.getElementById('selfQ3Input').value.trim();
+
+  const newItem = {
+    id: 'self-' + Date.now(),
+    name,
+    studentClass,
+    studentNo,
+    q1Discovery,
+    q2KeyRule,
+    q3Improvement,
+    timestamp: new Date().toISOString().split('T')[0]
+  };
+
+  closeSelfAssessmentModal();
+  selfAssessmentsList.unshift(newItem);
+  saveSelfAssessmentsToStorage();
+  renderApp();
+
+  // ส่งบันทึกข้อมูลเข้า Cloudflare D1 Database
+  try {
+    await fetch(getApiUrl('/self-assessments'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newItem)
+    });
+    showToast('บันทึกแบบประเมินตนเองสำเร็จ ขอบคุณสำหรับความตั้งใจครับ!');
+  } catch (err) {
+    console.error('Cloudflare D1 self-assessment sync error:', err);
+  } finally {
+    fetchLiveDataFromD1();
+  }
+}
+
+function openViewSelfAssessmentsModal() {
+  renderSelfAssessmentsTable();
+  document.getElementById('viewSelfAssessmentsModal').classList.remove('hidden');
+}
+
+function closeViewSelfAssessmentsModal() {
+  document.getElementById('viewSelfAssessmentsModal').classList.add('hidden');
+}
+
+function renderSelfAssessmentsTable() {
+  const tbody = document.getElementById('selfAssessmentsTableBody');
+  const badge = document.getElementById('selfAssessmentsCountBadge');
+  if (!tbody) return;
+
+  badge.textContent = `ประเมินแล้ว ${selfAssessmentsList.length} คน`;
+
+  if (selfAssessmentsList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">ยังไม่มีนักเรียนส่งแบบประเมินตนเอง</td></tr>`;
+    return;
+  }
+
+  let html = '';
+  selfAssessmentsList.forEach(item => {
+    const studentClass = item.studentClass || item.student_class || '';
+    const studentNo = item.studentNo || item.student_no || '';
+    const q1 = item.q1Discovery || item.q1_discovery || '';
+    const q2 = item.q2KeyRule || item.q2_key_rule || '';
+    const q3 = item.q3Improvement || item.q3_improvement || '';
+
+    html += `
+      <tr>
+        <td>
+          <strong>${escapeHtml(item.name)}</strong><br>
+          <span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span>
+        </td>
+        <td style="max-width: 220px;"><small>${escapeHtml(q1)}</small></td>
+        <td style="max-width: 220px;"><small class="text-indigo">${escapeHtml(q2)}</small></td>
+        <td style="max-width: 220px;"><small class="text-rose">${escapeHtml(q3)}</small></td>
+        <td><small class="text-muted">${item.timestamp || '-'}</small></td>
+        <td>
+          <button class="btn btn-sm btn-ghost text-rose" onclick="deleteSelfAssessment('${item.id}')" title="ลบข้อมูลนี้">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
+function deleteSelfAssessment(selfId) {
+  const item = selfAssessmentsList.find(c => c.id === selfId);
+  if (!item) return;
+
+  if (confirm(`ต้องการลบผลประเมินตนเองของนักเรียน "${item.name}" หรือไม่?`)) {
+    selfAssessmentsList = selfAssessmentsList.filter(c => c.id !== selfId);
+    saveSelfAssessmentsToStorage();
+
+    fetch(getApiUrl(`/self-assessments?id=${encodeURIComponent(selfId)}`), { method: 'DELETE' }).catch(() => {});
+    fetch(getApiUrl('/self-assessments'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id: selfId })
+    }).catch(() => {});
+
+    renderSelfAssessmentsTable();
+    renderApp();
+    showToast('ลบข้อมูลเรียบร้อยแล้ว');
+  }
+}
+
+function exportSelfAssessmentsCSV() {
+  if (selfAssessmentsList.length === 0) {
+    alert('ไม่มีข้อมูลแบบประเมินตนเองสำหรับส่งออก');
+    return;
+  }
+
+  let csvContent = '\uFEFF';
+  csvContent += 'ID,ชื่อ-นามสกุล,ชั้น,เลขที่,ข้อ1(สิ่งที่ค้นพบใหม่),ข้อ2(Design Rule สำคัญที่สุด),ข้อ3(ส่วนที่อยากปรับปรุง),วันที่ส่ง\n';
+
+  selfAssessmentsList.forEach(item => {
+    const studentClass = item.studentClass || item.student_class || '';
+    const studentNo = item.studentNo || item.student_no || '';
+    const q1 = item.q1Discovery || item.q1_discovery || '';
+    const q2 = item.q2KeyRule || item.q2_key_rule || '';
+    const q3 = item.q3Improvement || item.q3_improvement || '';
+
+    const safeName = `"${(item.name || '').replace(/"/g, '""')}"`;
+    const safeClass = `"${(studentClass || '').replace(/"/g, '""')}"`;
+    const safeQ1 = `"${(q1 || '').replace(/"/g, '""')}"`;
+    const safeQ2 = `"${(q2 || '').replace(/"/g, '""')}"`;
+    const safeQ3 = `"${(q3 || '').replace(/"/g, '""')}"`;
+
+    csvContent += `${item.id},${safeName},${safeClass},${studentNo},${safeQ1},${safeQ2},${safeQ3},${item.timestamp || ''}\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `รายงานผลแบบประเมินตนเองนักเรียน_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  showToast('ดาวน์โหลดไฟล์ CSV แบบประเมินตนเองเรียบร้อยแล้ว');
 }
 
 // ==========================================

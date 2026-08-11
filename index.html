@@ -46,7 +46,13 @@
           <span>ส่งแบนเนอร์ของฉัน</span>
         </button>
 
-        <!-- 4. เข้าสู่ระบบครู (แอดมิน) -->
+        <!-- 4. แบบประเมินตนเอง (Self-Assessment) -->
+        <button id="openSelfAssessmentModalBtn" class="btn btn-outline-nav" title="แบบประเมินตนเอง เรื่อง การออกแบบแบนเนอร์ดิจิทัล">
+          <i class="fa-solid fa-user-check text-rose"></i>
+          <span>แบบประเมินตนเอง</span>
+        </button>
+
+        <!-- 5. เข้าสู่ระบบครู (แอดมิน) -->
         <button id="adminToggleBtn" class="btn btn-admin">
           <i class="fa-solid fa-user-shield"></i>
           <span id="adminBtnText">เข้าสู่ระบบครู</span>
@@ -99,6 +105,11 @@
           <i class="fa-solid fa-clipboard-check text-emerald"></i>
           <span id="totalChecklistsStat">0</span> นักเรียนส่งสรุปบทเรียนแล้ว
         </div>
+        <!-- ชิปแสดงจำนวนนักเรียนประเมินตนเอง -->
+        <div class="stat-chip highlight-chip" id="selfAssessmentsStatChip">
+          <i class="fa-solid fa-user-check text-rose"></i>
+          <span id="totalSelfAssessmentsStat">0</span> นักเรียนประเมินตนเองแล้ว
+        </div>
       </div>
     </div>
   </header>
@@ -142,7 +153,12 @@
             <i class="fa-solid fa-list-check me-1 text-emerald"></i> ตรวจสรุปถอดบทเรียนนักเรียน
           </button>
 
-          <!-- 4. Export ผลประเมินดาว (CSV) -->
+          <!-- 4. ตรวจแบบประเมินตนเองนักเรียน -->
+          <button id="openViewSelfAssessmentsModalBtn" class="btn btn-admin-tool">
+            <i class="fa-solid fa-clipboard-question me-1 text-rose"></i> ตรวจแบบประเมินตนเอง
+          </button>
+
+          <!-- 5. Export ผลประเมินดาว (CSV) -->
           <button id="exportCsvBtn" class="btn btn-admin-tool">
             <i class="fa-solid fa-file-excel me-1 text-cyan"></i> Export ผลประเมินดาว (CSV)
           </button>
@@ -424,6 +440,116 @@
           </div>
         </form>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- 3.5. Student Self-Assessment Modal (ประเมินตนเองด้าน A) -->
+  <div id="selfAssessmentModal" class="modal-overlay hidden">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <div>
+          <h3><i class="fa-solid fa-user-check text-rose me-2"></i>แบบประเมินตนเอง (Self-Assessment)</h3>
+          <p class="modal-subtitle">เรื่อง การออกแบบแบนเนอร์ดิจิทัล</p>
+        </div>
+        <button class="modal-close" onclick="closeSelfAssessmentModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        
+        <form id="selfAssessmentForm" onsubmit="handleSelfAssessmentSubmit(event)">
+          
+          <!-- ข้อมูลส่วนตัวนักเรียน -->
+          <div class="checklist-section-box">
+            <h4><i class="fa-solid fa-user-graduate text-indigo me-2"></i>ข้อมูลผู้เรียน</h4>
+            <div class="form-row mt-2">
+              <div class="form-group col-6">
+                <label for="selfStudentName">ชื่อ - นามสกุล *</label>
+                <input type="text" id="selfStudentName" class="form-control" placeholder="เช่น ด.ญ.จิดาภา อิ่มหนำ" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="selfStudentClass">ชั้น *</label>
+                <input type="text" id="selfStudentClass" class="form-control" placeholder="เช่น ม.3/1" required>
+              </div>
+              <div class="form-group col-3">
+                <label for="selfStudentNo">เลขที่ *</label>
+                <input type="number" id="selfStudentNo" class="form-control" placeholder="เช่น 34" min="1" max="60" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- ข้อความคำชี้แจง -->
+          <div class="alert alert-info mt-3">
+            <i class="fa-solid fa-circle-info me-1"></i> <strong>คำชี้แจง:</strong> ให้นักเรียนตอบคำถามตามความเป็นจริง เพื่อสะท้อนสิ่งที่ตนเองได้เรียนรู้และแนวทางการพัฒนาผลงาน
+          </div>
+
+          <!-- ข้อที่ 1 -->
+          <div class="checklist-question-box mt-3">
+            <label class="question-title text-indigo">
+              1. วันนี้นักเรียนค้นพบอะไรใหม่เกี่ยวกับการออกแบบแบนเนอร์ดิจิทัลบ้าง? *
+            </label>
+            <textarea id="selfQ1Input" class="form-control" rows="3" placeholder="✍️ พิมพ์สะท้อนสิ่งที่ค้นพบใหม่ในการเรียนรู้วันนี้..." required></textarea>
+          </div>
+
+          <!-- ข้อที่ 2 -->
+          <div class="checklist-question-box mt-3">
+            <label class="question-title text-amber">
+              2. จาก Design Rules (กฎ 3 ข้อ) ที่นักเรียนกำหนด นักเรียนคิดว่าข้อใดสำคัญที่สุดในการออกแบบแบนเนอร์ของตนเอง เพราะอะไร? *
+            </label>
+            <textarea id="selfQ2Input" class="form-control" rows="3" placeholder="✍️ ระบุกฎข้อที่สำคัญที่สุดพร้อมอธิบายเหตุผลประกอบ..." required></textarea>
+          </div>
+
+          <!-- ข้อที่ 3 -->
+          <div class="checklist-question-box mt-3">
+            <label class="question-title text-rose">
+              3. ถ้านักเรียนมีโอกาสปรับปรุงแบนเนอร์ของตนเอง นักเรียนอยากปรับปรุงส่วนใด และเพราะอะไร? *
+            </label>
+            <textarea id="selfQ3Input" class="form-control" rows="3" placeholder="✍️ พิมพ์ส่วนที่อยากพัฒนาปรับปรุงเพิ่มเติมและเหตุผล..." required></textarea>
+          </div>
+
+          <div class="modal-footer px-0 pb-0 mt-4">
+            <button type="button" class="btn btn-ghost" onclick="closeSelfAssessmentModal()">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary" style="background-color: var(--rose-600); border-color: var(--rose-600);">
+              <i class="fa-solid fa-paper-plane me-1"></i> บันทึกแบบประเมินตนเอง
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.5. Teacher View Student Self-Assessments Records Modal (สำหรับครูตรวจผลงาน A) -->
+  <div id="viewSelfAssessmentsModal" class="modal-overlay hidden">
+    <div class="modal-container modal-lg">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-clipboard-question text-rose me-2"></i>รายการแบบประเมินตนเองของนักเรียน (Self-Assessment)</h3>
+        <button class="modal-close" onclick="closeViewSelfAssessmentsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span id="selfAssessmentsCountBadge" class="count-badge">ประเมินแล้ว 0 คน</span>
+          <button onclick="exportSelfAssessmentsCSV()" class="btn btn-sm btn-success">
+            <i class="fa-solid fa-file-excel me-1"></i> Export แบบประเมินตนเอง (CSV)
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>นักเรียน</th>
+                <th>ข้อ 1 (สิ่งที่ค้นพบใหม่)</th>
+                <th>ข้อ 2 (Design Rule สำคัญที่สุด)</th>
+                <th>ข้อ 3 (ส่วนที่อยากปรับปรุง)</th>
+                <th>วันที่</th>
+                <th>จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="selfAssessmentsTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -778,6 +904,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Logic JavaScript -->
-  <script src="app.js?v=36.0"></script>
+  <script src="app.js?v=37.0"></script>
 </body>
 </html>
