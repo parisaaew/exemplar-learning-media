@@ -101,12 +101,12 @@
           <span id="totalReviewsStat">0</span> ครั้งที่ร่วมประเมิน
         </div>
         <!-- ชิปแสดงจำนวนนักเรียนส่งสรุปบทเรียน -->
-        <div class="stat-chip highlight-chip" id="checklistsStatChip">
+        <div class="stat-chip highlight-chip clickable-chip" id="checklistsStatChip" onclick="handleChecklistStatChipClick()" style="cursor: pointer;" title="คลิกเพื่อตรวจดูรายการสรุปถอดบทเรียนของนักเรียน">
           <i class="fa-solid fa-clipboard-check text-emerald"></i>
           <span id="totalChecklistsStat">0</span> นักเรียนส่งสรุปบทเรียนแล้ว
         </div>
         <!-- ชิปแสดงจำนวนนักเรียนประเมินตนเอง -->
-        <div class="stat-chip highlight-chip" id="selfAssessmentsStatChip">
+        <div class="stat-chip highlight-chip clickable-chip" id="selfAssessmentsStatChip" onclick="handleSelfAssessmentStatChipClick()" style="cursor: pointer;" title="คลิกเพื่อตรวจดูรายการแบบประเมินตนเองของนักเรียน">
           <i class="fa-solid fa-user-check text-rose"></i>
           <span id="totalSelfAssessmentsStat">0</span> นักเรียนประเมินตนเองแล้ว
         </div>
@@ -904,6 +904,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Logic JavaScript -->
-  <script src="app.js?v=39.0"></script>
+  <script src="app.js?v=40.0"></script>
 </body>
 </html>

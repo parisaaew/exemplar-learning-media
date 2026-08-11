@@ -815,6 +815,24 @@ function setupEventListeners() {
   setupStarRatingSelectors();
 }
 
+function handleChecklistStatChipClick() {
+  if (isAdminLoggedIn) {
+    openViewChecklistsModal();
+  } else {
+    openAdminLoginModal();
+    showToast('กรุณาเข้าสู่ระบบครู (แอดมิน) เพื่อตรวจผลสรุปถอดบทเรียน');
+  }
+}
+
+function handleSelfAssessmentStatChipClick() {
+  if (isAdminLoggedIn) {
+    openViewSelfAssessmentsModal();
+  } else {
+    openAdminLoginModal();
+    showToast('กรุณาเข้าสู่ระบบครู (แอดมิน) เพื่อตรวจแบบประเมินตนเอง');
+  }
+}
+
 // ==========================================
 // Student Define Checklist Handlers (Knowledge - K Assessment)
 // ==========================================
