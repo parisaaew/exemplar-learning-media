@@ -333,6 +333,34 @@ function renderStats() {
   if (totalReviewsEl) totalReviewsEl.textContent = totalReviews;
   if (totalChecklistsEl) totalChecklistsEl.textContent = checklistsList.length;
   if (totalSelfEl) totalSelfEl.textContent = selfAssessmentsList.length;
+
+  // ปรับการคลิกดูข้อมูลชิปสถิติเฉพาะเมื่อเป็นครูแอดมินเท่านั้น (ฝั่งนักเรียนคลิกไม่ได้ 100%)
+  const checklistsChip = document.getElementById('checklistsStatChip');
+  const selfChip = document.getElementById('selfAssessmentsStatChip');
+
+  if (checklistsChip) {
+    if (isAdminLoggedIn) {
+      checklistsChip.classList.add('clickable-chip');
+      checklistsChip.style.cursor = 'pointer';
+      checklistsChip.title = 'คลิกเพื่อตรวจดูรายการสรุปถอดบทเรียนของนักเรียน';
+    } else {
+      checklistsChip.classList.remove('clickable-chip');
+      checklistsChip.style.cursor = 'default';
+      checklistsChip.removeAttribute('title');
+    }
+  }
+
+  if (selfChip) {
+    if (isAdminLoggedIn) {
+      selfChip.classList.add('clickable-chip');
+      selfChip.style.cursor = 'pointer';
+      selfChip.title = 'คลิกเพื่อตรวจดูรายการแบบประเมินตนเองของนักเรียน';
+    } else {
+      selfChip.classList.remove('clickable-chip');
+      selfChip.style.cursor = 'default';
+      selfChip.removeAttribute('title');
+    }
+  }
 }
 
 function renderFilterTabs() {
@@ -818,18 +846,12 @@ function setupEventListeners() {
 function handleChecklistStatChipClick() {
   if (isAdminLoggedIn) {
     openViewChecklistsModal();
-  } else {
-    openAdminLoginModal();
-    showToast('กรุณาเข้าสู่ระบบครู (แอดมิน) เพื่อตรวจผลสรุปถอดบทเรียน');
   }
 }
 
 function handleSelfAssessmentStatChipClick() {
   if (isAdminLoggedIn) {
     openViewSelfAssessmentsModal();
-  } else {
-    openAdminLoginModal();
-    showToast('กรุณาเข้าสู่ระบบครู (แอดมิน) เพื่อตรวจแบบประเมินตนเอง');
   }
 }
 
