@@ -908,8 +908,8 @@ function renderChecklistsTable() {
         <td style="max-width: 200px;"><small>${escapeHtml(bestPractices)}</small></td>
         <td style="max-width: 200px;"><small class="text-rose">${escapeHtml(thingsToAvoid)}</small></td>
         <td style="max-width: 220px;">
-          <small class="d-block">🎨 <strong>สี:</strong> ${escapeHtml(ruleColor)}</small>
           <small class="d-block">🔤 <strong>ฟอนต์:</strong> ${escapeHtml(ruleFont)}</small>
+          <small class="d-block">🎨 <strong>สี:</strong> ${escapeHtml(ruleColor)}</small>
           <small class="d-block">🎯 <strong>CTA:</strong> ${escapeHtml(ruleCta)}</small>
         </td>
         <td><small class="text-muted">${item.timestamp || '-'}</small></td>
