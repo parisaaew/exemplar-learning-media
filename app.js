@@ -1336,8 +1336,11 @@ function openMediaViewer(mediaId) {
     } else {
       let refHtml = '';
       validRatings.forEach((r, idx) => {
-        const itemAvg = ((r.readability + r.visualHarmony + r.focusCta) / 3).toFixed(1);
-        const starsHtml = getStarRatingHtml(parseFloat(itemAvg));
+        const r1 = Number(r.readability || 5);
+        const r2 = Number(r.visualHarmony || r.visual_harmony || 5);
+        const r3 = Number(r.focusCta || r.focus_cta || 5);
+        const itemAvg = ((r1 + r2 + r3) / 3).toFixed(1);
+        const starsHtml = renderMiniStars(parseFloat(itemAvg));
         
         refHtml += `
           <div class="reflection-card">
@@ -1351,9 +1354,9 @@ function openMediaViewer(mediaId) {
             </div>
             <p class="reflection-card-text mt-2 mb-2">"${escapeHtml(r.reflection)}"</p>
             <div class="reflection-card-breakdown">
-              <span class="breakdown-tag"><i class="fa-solid fa-font text-indigo me-1"></i>อ่านง่าย: <strong>${r.readability.toFixed(1)}</strong></span>
-              <span class="breakdown-tag"><i class="fa-solid fa-palette text-amber me-1"></i>ความสวยงาม: <strong>${r.visualHarmony.toFixed(1)}</strong></span>
-              <span class="breakdown-tag"><i class="fa-solid fa-bullseye text-rose me-1"></i>จุดสนใจ: <strong>${r.focusCta.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-font text-indigo me-1"></i>อ่านง่าย: <strong>${r1.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-palette text-amber me-1"></i>ความสวยงาม: <strong>${r2.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-bullseye text-rose me-1"></i>จุดสนใจ: <strong>${r3.toFixed(1)}</strong></span>
             </div>
           </div>
         `;
