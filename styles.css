@@ -1036,6 +1036,71 @@ body {
   gap: 0.75rem;
 }
 
+/* Student Reflections & Comments in Viewer Modal */
+.reflections-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.reflection-card {
+  background: var(--bg-slate);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.15rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-normal);
+}
+
+.reflection-card:hover {
+  border-color: var(--primary-300);
+  box-shadow: var(--shadow-md);
+}
+
+.avatar-chip {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--primary-100);
+}
+
+.reflection-card-text {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.55;
+  background: #ffffff;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border-left: 3.5px solid var(--primary-500);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.reflection-card-breakdown {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+
+.breakdown-tag {
+  font-size: 0.775rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.empty-reflections-box {
+  background: var(--bg-slate);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
 /* Forms in Modal */
 .form-group {
   display: flex;

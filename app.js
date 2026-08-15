@@ -480,12 +480,14 @@ function renderMediaGrid() {
             ${tagsHtml}
           </div>
 
-          <div class="card-rating-box">
+          <div class="card-rating-box" onclick="openMediaViewer('${item.id}')" style="cursor: pointer;" title="คลิกเพื่ออ่านข้อคิดเห็นและคอมเม้นต์ถอดบทเรียนทั้งหมด">
             <div class="rating-score-group">
               <span class="rating-score-num">${formattedAvg}</span>
               <div class="rating-stars-mini">${starsHtml}</div>
             </div>
-            <span class="rating-count-text">(${reviewCount} ประเมิน)</span>
+            <span class="rating-count-text">
+              (${reviewCount} ประเมิน ${item.ratings && item.ratings.filter(r => r.reflection && r.reflection.trim()).length > 0 ? `· <i class="fa-solid fa-comment text-indigo ms-1"></i> ${item.ratings.filter(r => r.reflection && r.reflection.trim()).length}` : ''})
+            </span>
           </div>
         </div>
 
@@ -1301,6 +1303,63 @@ function openMediaViewer(mediaId) {
         <p style="color: #cbd5e1; margin-top: 0.5rem;">คลิกปุ่มด้านล่างเพื่อเปิดอ่านเอกสารตัวเต็มในหน้าต่างใหม่</p>
       </div>
     `;
+  }
+
+  // -------------------------------------------------------------------
+  // แสดงรายการข้อเสนอแนะและคอมเม้นถอดบทเรียนจากผู้เรียน (Student Reflections)
+  // -------------------------------------------------------------------
+  const reflectionsContainer = document.getElementById('viewerReflectionsList');
+  const countBadge = document.getElementById('viewerReflectionsCount');
+  const ratings = item.ratings || [];
+  const validRatings = ratings.filter(r => r.reflection && r.reflection.trim() !== '');
+
+  if (countBadge) {
+    countBadge.textContent = `${ratings.length} การประเมิน (${validRatings.length} ข้อคิดเห็น)`;
+  }
+
+  if (reflectionsContainer) {
+    if (ratings.length === 0) {
+      reflectionsContainer.innerHTML = `
+        <div class="empty-reflections-box text-center">
+          <i class="fa-solid fa-star text-amber mb-2" style="font-size: 2rem; opacity: 0.6;"></i>
+          <p class="text-muted mb-0">ยังไม่มีการประเมินและข้อเสนอแนะสำหรับสื่อนี้</p>
+          <small class="text-indigo">มาร่วมประเมินถอดบทเรียนเป็นคนแรกโดยกดปุ่ม "ประเมินสื่อนี้" ด้านล่าง</small>
+        </div>
+      `;
+    } else if (validRatings.length === 0) {
+      reflectionsContainer.innerHTML = `
+        <div class="empty-reflections-box text-center">
+          <i class="fa-solid fa-comments text-cyan mb-2" style="font-size: 2rem; opacity: 0.6;"></i>
+          <p class="text-muted mb-0">มีการประเมินคะแนนดาวแล้ว ${ratings.length} ครั้ง (ยังไม่มีผู้พิมพ์ข้อความเสนอแนะ)</p>
+        </div>
+      `;
+    } else {
+      let refHtml = '';
+      validRatings.forEach((r, idx) => {
+        const itemAvg = ((r.readability + r.visualHarmony + r.focusCta) / 3).toFixed(1);
+        const starsHtml = getStarRatingHtml(parseFloat(itemAvg));
+        
+        refHtml += `
+          <div class="reflection-card">
+            <div class="reflection-card-header d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <span class="avatar-chip"><i class="fa-solid fa-user-graduate me-1"></i> ผู้เรียน #${idx + 1}</span>
+                <span class="rating-stars-mini" style="font-size: 0.85rem;">${starsHtml}</span>
+                <strong class="text-amber" style="font-size: 0.9rem;">${itemAvg}</strong>
+              </div>
+              <small class="text-muted"><i class="fa-solid fa-clock me-1"></i>${r.timestamp || '-'}</small>
+            </div>
+            <p class="reflection-card-text mt-2 mb-2">"${escapeHtml(r.reflection)}"</p>
+            <div class="reflection-card-breakdown">
+              <span class="breakdown-tag"><i class="fa-solid fa-font text-indigo me-1"></i>อ่านง่าย: <strong>${r.readability.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-palette text-amber me-1"></i>ความสวยงาม: <strong>${r.visualHarmony.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-bullseye text-rose me-1"></i>จุดสนใจ: <strong>${r.focusCta.toFixed(1)}</strong></span>
+            </div>
+          </div>
+        `;
+      });
+      reflectionsContainer.innerHTML = refHtml;
+    }
   }
 
   document.getElementById('mediaViewerModal').classList.remove('hidden');
