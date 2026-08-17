@@ -1354,9 +1354,9 @@ function openMediaViewer(mediaId) {
             </div>
             <p class="reflection-card-text mt-2 mb-2">"${escapeHtml(r.reflection)}"</p>
             <div class="reflection-card-breakdown">
-              <span class="breakdown-tag"><i class="fa-solid fa-font text-indigo me-1"></i>อ่านง่าย: <strong>${r1.toFixed(1)}</strong></span>
-              <span class="breakdown-tag"><i class="fa-solid fa-palette text-amber me-1"></i>ความสวยงาม: <strong>${r2.toFixed(1)}</strong></span>
-              <span class="breakdown-tag"><i class="fa-solid fa-bullseye text-rose me-1"></i>จุดสนใจ: <strong>${r3.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-font text-indigo me-1"></i>ฟอนต์และข้อความ: <strong>${r1.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-palette text-amber me-1"></i>ความสวยงามของสี: <strong>${r2.toFixed(1)}</strong></span>
+              <span class="breakdown-tag"><i class="fa-solid fa-bullseye text-rose me-1"></i>จุดสนใจและปุ่มเชิญชวน: <strong>${r3.toFixed(1)}</strong></span>
             </div>
           </div>
         `;
