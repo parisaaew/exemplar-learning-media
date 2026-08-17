@@ -591,7 +591,6 @@ async function handleStudentBannerSubmit(e) {
   const studentNo = document.getElementById('bannerStudentNo').value.trim();
   const academicYear = document.getElementById('bannerAcademicYear').value.trim() || '2569';
   const title = document.getElementById('bannerTitleInput').value.trim();
-  const concept = document.getElementById('bannerConceptInput').value.trim();
 
   const finalImgSrc = currentBannerImageData || 'https://images.unsplash.com/photo-1542744094-3a31b272c490?auto=format&fit=crop&w=800&q=80';
 
@@ -603,7 +602,7 @@ async function handleStudentBannerSubmit(e) {
     url: finalImgSrc,
     thumbnail: finalImgSrc,
     tags: [name, studentClass, `เลขที่${studentNo}`, `ปีการศึกษา${academicYear}`],
-    description: `ผลงานโดย: ${name} (ชั้น ${studentClass} เลขที่ ${studentNo}) | ปีการศึกษา ${academicYear} | แนวคิดการออกแบบ: ${concept}`,
+    description: `ผลงานโดย: ${name} (ชั้น ${studentClass} เลขที่ ${studentNo}) | ปีการศึกษา ${academicYear}`,
     ratings: []
   };
 
