@@ -53,6 +53,12 @@
   padding: 0;
 }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Prompt', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-slate);
@@ -1346,13 +1352,75 @@ body {
 .footer-link:hover { color: #ffffff; }
 
 /* Responsive Rules */
+@media (max-width: 1200px) {
+  .nav-container {
+    max-width: 100%;
+    padding: 0 1.25rem;
+  }
+  .nav-actions {
+    gap: 0.35rem;
+  }
+  .btn-outline-nav,
+  .btn-outline-checklist,
+  .btn-admin,
+  .btn-admin-tool {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.7rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .nav-container {
+    height: auto;
+    padding: 0.85rem 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+  .nav-brand {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  .brand-title {
+    font-size: 1.05rem;
+    white-space: normal;
+    text-align: center;
+    max-width: none;
+  }
+  .nav-actions {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .hero-section {
+    padding: 3rem 1rem 2.5rem 1rem;
+  }
+  .hero-title {
+    font-size: 2rem;
+  }
+  .admin-toolbar-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .admin-toolbar-header h2 {
+    white-space: normal;
+    text-align: center;
+  }
+  .admin-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .brand-title {
     font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 140px;
+    white-space: normal;
+    text-align: center;
   }
   .admin-banner {
     padding: 0.5rem 0;
@@ -1367,11 +1435,10 @@ body {
     font-size: 0.8rem;
     line-height: 1.35;
   }
-  .hero-title { font-size: 1.7rem; }
+  .hero-title { font-size: 1.6rem; }
   .hero-tagline { font-size: 0.8rem; padding: 0.2rem 0.75rem; }
   .hero-stats { flex-direction: column; width: 100%; }
   .stat-chip { justify-content: center; }
-  .nav-actions span { display: none; }
   .media-grid { grid-template-columns: 1fr; }
   .card-footer-actions { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; gap: 0; }
@@ -1380,16 +1447,21 @@ body {
 
 @media (max-width: 480px) {
   .nav-container {
-    padding: 0 0.75rem;
+    padding: 0.6rem 0.5rem;
   }
   .nav-brand {
     gap: 0.5rem;
   }
   .brand-title {
-    max-width: 110px;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+  }
+  .btn-outline-nav,
+  .btn-outline-checklist,
+  .btn-admin {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.55rem;
   }
   .nav-actions {
-    gap: 0.35rem;
+    gap: 0.3rem;
   }
 }
