@@ -69,7 +69,7 @@ body {
 
 /* Container Utilities */
 .container {
-  max-width: 1280px;
+  max-width: 1480px;
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -668,8 +668,8 @@ body {
 
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  gap: 1.5rem;
 }
 
 /* Card Styling */
@@ -1416,6 +1416,28 @@ body {
   }
 }
 
+/* Ultra-Widescreen Monitor Rule (e.g. 1920x1080 classroom displays) */
+@media (min-width: 1500px) {
+  .container {
+    max-width: 1560px;
+  }
+  .nav-container {
+    max-width: 1560px;
+  }
+  .hero-title {
+    font-size: 2.75rem;
+    max-width: 1000px;
+  }
+  .hero-description {
+    font-size: 1.15rem;
+    max-width: 850px;
+  }
+  .media-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.75rem;
+  }
+}
+
 @media (max-width: 768px) {
   .brand-title {
     font-size: 0.95rem;
@@ -1437,8 +1459,20 @@ body {
   }
   .hero-title { font-size: 1.6rem; }
   .hero-tagline { font-size: 0.8rem; padding: 0.2rem 0.75rem; }
-  .hero-stats { flex-direction: column; width: 100%; }
-  .stat-chip { justify-content: center; }
+  .hero-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .stat-chip {
+    justify-content: center;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.8rem;
+  }
+  .stat-chip:last-child {
+    grid-column: span 2;
+  }
   .media-grid { grid-template-columns: 1fr; }
   .card-footer-actions { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; gap: 0; }
