@@ -56,7 +56,7 @@
 html, body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -245,14 +245,16 @@ body {
   border-radius: var(--radius-sm);
 }
 
-/* Navbar Layout */
+/* Navbar Layout (Sticky Header) */
 .navbar {
-  background-color: var(--primary-900);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(30, 27, 75, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   position: sticky;
   top: 0;
-  z-index: 100;
-  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .nav-container {
