@@ -887,7 +887,7 @@ function renderChecklistsTable() {
   badge.textContent = `ส่งแล้ว ${checklistsList.length} คน`;
 
   if (checklistsList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">ยังไม่มีนักเรียนส่งแบบสรุปถอดบทเรียน</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">ยังไม่มีนักเรียนส่งแบบสรุปถอดบทเรียน</td></tr>`;
     return;
   }
 
@@ -907,13 +907,15 @@ function renderChecklistsTable() {
         <td><span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span></td>
         <td style="max-width: 200px;"><small>${escapeHtml(bestPractices)}</small></td>
         <td style="max-width: 200px;"><small class="text-rose">${escapeHtml(thingsToAvoid)}</small></td>
-        <td style="max-width: 220px;">
-          <small class="d-block">🔤 <strong>ฟอนต์:</strong> ${escapeHtml(ruleFont)}</small>
-          <small class="d-block">🎨 <strong>สี:</strong> ${escapeHtml(ruleColor)}</small>
+        <td style="width: 360px; max-width: 360px;">
+          <small class="d-block mb-1">🔤 <strong>ฟอนต์:</strong> ${escapeHtml(ruleFont)}</small>
+          <small class="d-block mb-1">🎨 <strong>สี:</strong> ${escapeHtml(ruleColor)}</small>
           <small class="d-block">🎯 <strong>CTA:</strong> ${escapeHtml(ruleCta)}</small>
         </td>
-        <td><small class="text-muted">${item.timestamp || '-'}</small></td>
-        <td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-sm btn-outline me-1" onclick="openSingleChecklistDetail('${item.id}')" title="เปิดโชว์รายละเอียดการถอดบทเรียนรายบุคคล">
+            <i class="fa-solid fa-eye me-1"></i> ดูรายละเอียด
+          </button>
           <button class="btn btn-sm btn-ghost text-rose" onclick="deleteChecklist('${item.id}')" title="ลบข้อมูลนี้">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -923,6 +925,43 @@ function renderChecklistsTable() {
   });
 
   tbody.innerHTML = html;
+}
+
+function openSingleChecklistDetail(chkId) {
+  const item = checklistsList.find(c => c.id === chkId);
+  if (!item) return;
+
+  const studentClass = item.studentClass || item.student_class || '';
+  const studentNo = item.studentNo || item.student_no || '';
+  const bestPractices = item.bestPractices || item.best_practices || '-';
+  const thingsToAvoid = item.thingsToAvoid || item.things_to_avoid || '-';
+  const ruleColor = item.ruleColor || item.rule_color || '-';
+  const ruleFont = item.ruleFont || item.rule_font || '-';
+  const ruleCta = item.ruleCta || item.rule_cta || '-';
+
+  document.getElementById('singleChecklistStudentName').innerHTML = `<i class="fa-solid fa-user-graduate text-cyan me-2"></i>${escapeHtml(item.name)}`;
+  document.getElementById('singleChecklistStudentInfo').textContent = `ชั้น ${studentClass} | เลขที่ ${studentNo}`;
+  document.getElementById('singleChecklistBest').textContent = bestPractices;
+  document.getElementById('singleChecklistAvoid').textContent = thingsToAvoid;
+  document.getElementById('singleChecklistFont').textContent = ruleFont;
+  document.getElementById('singleChecklistColor').textContent = ruleColor;
+  document.getElementById('singleChecklistCta').textContent = ruleCta;
+
+  document.getElementById('singleChecklistDetailModal').classList.remove('hidden');
+}
+
+function closeSingleChecklistDetailModal() {
+  document.getElementById('singleChecklistDetailModal').classList.add('hidden');
+}
+
+function randomSelectChecklist() {
+  if (checklistsList.length === 0) {
+    alert('ยังไม่มีนักเรียนส่งแบบสรุปถอดบทเรียน');
+    return;
+  }
+  const randomIndex = Math.floor(Math.random() * checklistsList.length);
+  const randomStudent = checklistsList[randomIndex];
+  openSingleChecklistDetail(randomStudent.id);
 }
 
 function deleteChecklist(chkId) {
@@ -1066,7 +1105,7 @@ function renderSelfAssessmentsTable() {
   badge.textContent = `ประเมินแล้ว ${selfAssessmentsList.length} คน`;
 
   if (selfAssessmentsList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">ยังไม่มีนักเรียนส่งแบบประเมินตนเอง</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">ยังไม่มีนักเรียนส่งแบบประเมินตนเอง</td></tr>`;
     return;
   }
 
@@ -1084,11 +1123,13 @@ function renderSelfAssessmentsTable() {
           <strong>${escapeHtml(item.name)}</strong><br>
           <span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span>
         </td>
-        <td style="max-width: 220px;"><small>${escapeHtml(q1)}</small></td>
-        <td style="max-width: 220px;"><small class="text-indigo">${escapeHtml(q2)}</small></td>
-        <td style="max-width: 220px;"><small class="text-rose">${escapeHtml(q3)}</small></td>
-        <td><small class="text-muted">${item.timestamp || '-'}</small></td>
-        <td>
+        <td style="max-width: 250px;"><small>${escapeHtml(q1)}</small></td>
+        <td style="max-width: 250px;"><small class="text-indigo">${escapeHtml(q2)}</small></td>
+        <td style="max-width: 250px;"><small class="text-rose">${escapeHtml(q3)}</small></td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-sm btn-outline me-1" onclick="openSingleSelfAssessmentDetail('${item.id}')" title="เปิดโชว์รายละเอียดการประเมินตนเองรายบุคคล">
+            <i class="fa-solid fa-eye me-1"></i> ดูรายละเอียด
+          </button>
           <button class="btn btn-sm btn-ghost text-rose" onclick="deleteSelfAssessment('${item.id}')" title="ลบข้อมูลนี้">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -1098,6 +1139,39 @@ function renderSelfAssessmentsTable() {
   });
 
   tbody.innerHTML = html;
+}
+
+function openSingleSelfAssessmentDetail(selfId) {
+  const item = selfAssessmentsList.find(c => c.id === selfId);
+  if (!item) return;
+
+  const studentClass = item.studentClass || item.student_class || '';
+  const studentNo = item.studentNo || item.student_no || '';
+  const q1 = item.q1Discovery || item.q1_discovery || '-';
+  const q2 = item.q2KeyRule || item.q2_key_rule || '-';
+  const q3 = item.q3Improvement || item.q3_improvement || '-';
+
+  document.getElementById('singleSelfStudentName').innerHTML = `<i class="fa-solid fa-user-check text-rose me-2"></i>${escapeHtml(item.name)}`;
+  document.getElementById('singleSelfStudentInfo').textContent = `ชั้น ${studentClass} | เลขที่ ${studentNo}`;
+  document.getElementById('singleSelfQ1').textContent = q1;
+  document.getElementById('singleSelfQ2').textContent = q2;
+  document.getElementById('singleSelfQ3').textContent = q3;
+
+  document.getElementById('singleSelfAssessmentDetailModal').classList.remove('hidden');
+}
+
+function closeSingleSelfAssessmentDetailModal() {
+  document.getElementById('singleSelfAssessmentDetailModal').classList.add('hidden');
+}
+
+function randomSelectSelfAssessment() {
+  if (selfAssessmentsList.length === 0) {
+    alert('ยังไม่มีนักเรียนส่งแบบประเมินตนเอง');
+    return;
+  }
+  const randomIndex = Math.floor(Math.random() * selfAssessmentsList.length);
+  const randomStudent = selfAssessmentsList[randomIndex];
+  openSingleSelfAssessmentDetail(randomStudent.id);
 }
 
 function deleteSelfAssessment(selfId) {

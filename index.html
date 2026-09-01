@@ -11,7 +11,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=56.0">
+  <link rel="stylesheet" href="styles.css?v=57.0">
 </head>
 <body>
 
@@ -517,9 +517,14 @@
       <div class="modal-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <span id="selfAssessmentsCountBadge" class="count-badge">ประเมินแล้ว 0 คน</span>
-          <button onclick="exportSelfAssessmentsCSV()" class="btn btn-sm btn-success">
-            <i class="fa-solid fa-file-excel me-1"></i> Export แบบประเมินตนเอง (CSV)
-          </button>
+          <div class="d-flex gap-2">
+            <button onclick="randomSelectSelfAssessment()" class="btn btn-sm btn-primary" style="background-color: var(--accent-purple); border-color: var(--accent-purple);">
+              <i class="fa-solid fa-dice me-1"></i> 🎲 สุ่มสุ่มนักเรียนขึ้นโชว์
+            </button>
+            <button onclick="exportSelfAssessmentsCSV()" class="btn btn-sm btn-success">
+              <i class="fa-solid fa-file-excel me-1"></i> Export แบบประเมินตนเอง (CSV)
+            </button>
+          </div>
         </div>
 
         <div class="table-responsive">
@@ -530,7 +535,6 @@
                 <th>ข้อ 1 (สิ่งที่ค้นพบใหม่)</th>
                 <th>ข้อ 2 (Design Rule สำคัญที่สุด)</th>
                 <th>ข้อ 3 (ส่วนที่อยากปรับปรุง)</th>
-                <th>วันที่</th>
                 <th>จัดการ</th>
               </tr>
             </thead>
@@ -539,6 +543,9 @@
             </tbody>
           </table>
         </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeViewSelfAssessmentsModal()">ปิดหน้าต่าง</button>
       </div>
     </div>
   </div>
@@ -553,9 +560,14 @@
       <div class="modal-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <span id="checklistsCountBadge" class="count-badge">ส่งแล้ว 0 คน</span>
-          <button onclick="exportChecklistsCSV()" class="btn btn-sm btn-success">
-            <i class="fa-solid fa-file-excel me-1"></i> Export ข้อมูลสรุปถอดบทเรียน (CSV)
-          </button>
+          <div class="d-flex gap-2">
+            <button onclick="randomSelectChecklist()" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-dice me-1"></i> 🎲 สุ่มสุ่มนักเรียนขึ้นโชว์
+            </button>
+            <button onclick="exportChecklistsCSV()" class="btn btn-sm btn-success">
+              <i class="fa-solid fa-file-excel me-1"></i> Export ข้อมูลสรุปถอดบทเรียน (CSV)
+            </button>
+          </div>
         </div>
 
         <div class="table-responsive">
@@ -566,9 +578,8 @@
                 <th>ชั้น/เลขที่</th>
                 <th>ข้อดี (Best Practices)</th>
                 <th>ข้อควรระวัง (Things to Avoid)</th>
-                <th>กฎเหล็ก 3 ข้อ (สี/ฟอนต์/CTA)</th>
-                <th>วันที่ส่ง</th>
-                <th>ลบ</th>
+                <th style="width: 360px;">กฎเหล็ก 3 ข้อ (ฟอนต์/สี/CTA)</th>
+                <th>จัดการ</th>
               </tr>
             </thead>
             <tbody id="checklistsTableBody">
@@ -579,6 +590,100 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="closeViewChecklistsModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.8. Single Student Checklist Presentation Detail Modal (หน้าต่างการ์ดพรีเซนต์ถอดบทเรียนรายบุคคล) -->
+  <div id="singleChecklistDetailModal" class="modal-overlay hidden" style="z-index: 1100;">
+    <div class="modal-container modal-lg">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-900), #312e81); color: white;">
+        <div>
+          <h3 id="singleChecklistStudentName" style="color: white; font-size: 1.35rem;"><i class="fa-solid fa-user-graduate text-cyan me-2"></i>ด.ช.นริศ มานพ</h3>
+          <p id="singleChecklistStudentInfo" class="modal-subtitle" style="color: #cbd5e1;">ชั้น ม.3/2 | เลขที่ 5</p>
+        </div>
+        <button class="modal-close" style="color: white;" onclick="closeSingleChecklistDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="background: var(--bg-slate); padding: 1.75rem;">
+        
+        <!-- Box 1: Best Practices -->
+        <div class="checklist-section-box mb-3" style="background: white; border-left: 4px solid var(--primary-500); padding: 1.25rem;">
+          <h4 class="text-indigo" style="font-size: 1.05rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-thumbs-up me-2"></i>1. ข้อดีที่ควรนำมาเป็นแบบอย่าง (Best Practices)</h4>
+          <p id="singleChecklistBest" style="font-size: 1.05rem; color: var(--text-main); line-height: 1.6; font-weight: 500;">-</p>
+        </div>
+
+        <!-- Box 2: Things to Avoid -->
+        <div class="checklist-section-box mb-3" style="background: white; border-left: 4px solid var(--accent-rose); padding: 1.25rem;">
+          <h4 class="text-rose" style="font-size: 1.05rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-triangle-exclamation me-2"></i>2. ข้อผิดพลาดที่ต้องระวังและหลีกเลี่ยง (Things to Avoid)</h4>
+          <p id="singleChecklistAvoid" style="font-size: 1.05rem; color: var(--text-main); line-height: 1.6; font-weight: 500;">-</p>
+        </div>
+
+        <!-- Box 3: Design Rules 3 items -->
+        <div class="checklist-section-box mb-2" style="background: white; border-left: 4px solid var(--accent-amber); padding: 1.25rem;">
+          <h4 class="text-amber" style="font-size: 1.05rem; margin-bottom: 0.85rem;"><i class="fa-solid fa-gavel me-2"></i>3. กฎเหล็ก 3 ข้อ (Design Rules) สำหรับการออกแบบของฉัน</h4>
+          
+          <div class="p-3 mb-2 rounded" style="background: #f1f5f9; border: 1px solid #e2e8f0;">
+            <strong class="text-indigo" style="font-size: 1rem;"><i class="fa-solid fa-font me-2"></i>เรื่องฟอนต์ / ข้อความ:</strong>
+            <p id="singleChecklistFont" class="mt-1 mb-0" style="font-size: 1rem; color: var(--text-main);">-</p>
+          </div>
+
+          <div class="p-3 mb-2 rounded" style="background: #fffbeb; border: 1px solid #fef3c7;">
+            <strong class="text-amber" style="font-size: 1rem;"><i class="fa-solid fa-palette me-2"></i>เรื่องการใช้สี / พื้นหลัง:</strong>
+            <p id="singleChecklistColor" class="mt-1 mb-0" style="font-size: 1rem; color: var(--text-main);">-</p>
+          </div>
+
+          <div class="p-3 rounded" style="background: #fff1f2; border: 1px solid #ffe4e6;">
+            <strong class="text-rose" style="font-size: 1rem;"><i class="fa-solid fa-bullseye me-2"></i>เรื่องจุดสนใจ (Focus & CTA):</strong>
+            <p id="singleChecklistCta" class="mt-1 mb-0" style="font-size: 1rem; color: var(--text-main);">-</p>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button onclick="randomSelectChecklist()" class="btn btn-primary">
+          <i class="fa-solid fa-dice me-1"></i> 🎲 สุ่มนักเรียนคนถัดไป
+        </button>
+        <button class="btn btn-outline" onclick="closeSingleChecklistDetailModal()">ปิดหน้าต่าง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.9. Single Student Self-Assessment Presentation Detail Modal (หน้าต่างการ์ดพรีเซนต์ประเมินตนเองรายบุคคล) -->
+  <div id="singleSelfAssessmentDetailModal" class="modal-overlay hidden" style="z-index: 1100;">
+    <div class="modal-container modal-lg">
+      <div class="modal-header" style="background: linear-gradient(135deg, #881337, #9f1239); color: white;">
+        <div>
+          <h3 id="singleSelfStudentName" style="color: white; font-size: 1.35rem;"><i class="fa-solid fa-user-check text-rose me-2"></i>ด.ช.นริศ มานพ</h3>
+          <p id="singleSelfStudentInfo" class="modal-subtitle" style="color: #fecdd3;">ชั้น ม.3/2 | เลขที่ 5</p>
+        </div>
+        <button class="modal-close" style="color: white;" onclick="closeSingleSelfAssessmentDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="background: var(--bg-slate); padding: 1.75rem;">
+        
+        <!-- Q1 -->
+        <div class="checklist-section-box mb-3" style="background: white; border-left: 4px solid var(--primary-500); padding: 1.25rem;">
+          <h4 class="text-indigo" style="font-size: 1.05rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-lightbulb me-2"></i>1. สิ่งที่ค้นพบใหม่เกี่ยวกับการออกแบบแบนเนอร์ดิจิทัล</h4>
+          <p id="singleSelfQ1" style="font-size: 1.05rem; color: var(--text-main); line-height: 1.6; font-weight: 500;">-</p>
+        </div>
+
+        <!-- Q2 -->
+        <div class="checklist-section-box mb-3" style="background: white; border-left: 4px solid var(--accent-amber); padding: 1.25rem;">
+          <h4 class="text-amber" style="font-size: 1.05rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-star me-2"></i>2. กฎเหล็ก 3 ข้อที่คิดว่าสำคัญที่สุดและเหตุผล</h4>
+          <p id="singleSelfQ2" style="font-size: 1.05rem; color: var(--text-main); line-height: 1.6; font-weight: 500;">-</p>
+        </div>
+
+        <!-- Q3 -->
+        <div class="checklist-section-box mb-2" style="background: white; border-left: 4px solid var(--accent-rose); padding: 1.25rem;">
+          <h4 class="text-rose" style="font-size: 1.05rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-wrench me-2"></i>3. ส่วนที่อยากปรับปรุงพัฒนาแบนเนอร์ของตนเองและเหตุผล</h4>
+          <p id="singleSelfQ3" style="font-size: 1.05rem; color: var(--text-main); line-height: 1.6; font-weight: 500;">-</p>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button onclick="randomSelectSelfAssessment()" class="btn btn-primary" style="background-color: var(--accent-purple); border-color: var(--accent-purple);">
+          <i class="fa-solid fa-dice me-1"></i> 🎲 สุ่มนักเรียนคนถัดไป
+        </button>
+        <button class="btn btn-outline" onclick="closeSingleSelfAssessmentDetailModal()">ปิดหน้าต่าง</button>
       </div>
     </div>
   </div>
@@ -904,6 +1009,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Logic JavaScript -->
-  <script src="app.js?v=56.0"></script>
+  <script src="app.js?v=57.0"></script>
 </body>
 </html>
