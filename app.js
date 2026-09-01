@@ -1497,11 +1497,18 @@ function updateAdminUI() {
   const toolbar = document.getElementById('adminToolbar');
   const btnText = document.getElementById('adminBtnText');
   const checklistsStatChip = document.getElementById('checklistsStatChip');
+  const mobileAdminBadge = document.getElementById('mobileAdminBadge');
+  const mobileAdminSection = document.getElementById('mobileAdminSection');
+  const mobileAdminAuthBtnText = document.getElementById('mobileAdminAuthBtnText');
 
   if (isAdminLoggedIn) {
     banner.classList.remove('hidden');
     toolbar.classList.remove('hidden');
     btnText.textContent = 'โหมดแอดมิน (ใช้งานอยู่)';
+
+    if (mobileAdminBadge) mobileAdminBadge.classList.remove('hidden');
+    if (mobileAdminSection) mobileAdminSection.classList.remove('hidden');
+    if (mobileAdminAuthBtnText) mobileAdminAuthBtnText.textContent = 'ออกจากระบบแอดมิน';
 
     if (checklistsStatChip) {
       checklistsStatChip.style.cursor = 'pointer';
@@ -1514,12 +1521,59 @@ function updateAdminUI() {
     toolbar.classList.add('hidden');
     btnText.textContent = 'เข้าสู่ระบบครู';
 
+    if (mobileAdminBadge) mobileAdminBadge.classList.add('hidden');
+    if (mobileAdminSection) mobileAdminSection.classList.add('hidden');
+    if (mobileAdminAuthBtnText) mobileAdminAuthBtnText.textContent = 'เข้าสู่ระบบครู (แอดมิน)';
+
     if (checklistsStatChip) {
       checklistsStatChip.style.cursor = 'default';
       checklistsStatChip.title = 'สถิติจำนวนนักเรียนที่ส่งสรุปบทเรียน';
       checklistsStatChip.onclick = null;
       checklistsStatChip.classList.remove('clickable-chip');
     }
+  }
+}
+
+// ==========================================
+// Mobile Slide-out Drawer Menu Handlers
+// ==========================================
+
+function toggleMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  if (!drawer) return;
+  if (drawer.classList.contains('hidden')) {
+    openMobileDrawer();
+  } else {
+    closeMobileDrawer();
+  }
+}
+
+function openMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  if (drawer && overlay) {
+    overlay.classList.remove('hidden');
+    drawer.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  if (drawer && overlay) {
+    overlay.classList.add('hidden');
+    drawer.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+function handleMobileAdminToggle() {
+  closeMobileDrawer();
+  if (isAdminLoggedIn) {
+    exitAdminMode();
+  } else {
+    openAdminLoginModal();
   }
 }
 

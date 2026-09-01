@@ -11,7 +11,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=61.0">
+  <link rel="stylesheet" href="styles.css?v=62.0">
 </head>
 <body>
 
@@ -26,6 +26,11 @@
           <span class="brand-title">ELM : คลังผลงานต้นแบบเพื่อการเรียนรู้</span>
         </div>
       </div>
+
+      <!-- Hamburger Menu Toggle Button (For Mobile & Tablet) -->
+      <button class="mobile-hamburger-btn" onclick="toggleMobileDrawer()" title="เปิดเมนูหลัก">
+        <i class="fa-solid fa-bars"></i>
+      </button>
 
       <div class="nav-actions">
         <!-- 1. เกณฑ์ประเมิน -->
@@ -60,6 +65,92 @@
       </div>
     </div>
   </nav>
+
+  <!-- Mobile Slide-out Drawer Overlay & Container -->
+  <div id="mobileDrawerOverlay" class="mobile-drawer-overlay hidden" onclick="closeMobileDrawer()"></div>
+  <div id="mobileDrawer" class="mobile-drawer hidden">
+    <div class="mobile-drawer-header">
+      <div class="d-flex align-items-center gap-2">
+        <div class="brand-icon" style="width: 32px; height: 32px; font-size: 0.9rem;">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <strong style="color: white; font-size: 1rem;">ELM เมนูหลัก</strong>
+      </div>
+      <button class="mobile-drawer-close" onclick="closeMobileDrawer()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="mobile-drawer-body">
+      <!-- Status Badge inside drawer -->
+      <div id="mobileAdminBadge" class="mobile-admin-status-box hidden mb-3">
+        <i class="fa-solid fa-user-shield text-amber me-2"></i>
+        <span>โหมดแอดมิน (กำลังใช้งานอยู่)</span>
+      </div>
+
+      <!-- Section 1: Student Functions -->
+      <div class="drawer-section-title"><i class="fa-solid fa-graduation-cap me-1"></i> เมนูสำหรับผู้เรียน</div>
+      <ul class="drawer-menu-list">
+        <li>
+          <a href="#" onclick="openRubricModal(); closeMobileDrawer(); return false;">
+            <i class="fa-solid fa-book-open text-indigo"></i> เกณฑ์ประเมิน (Rubric 3D)
+          </a>
+        </li>
+        <li>
+          <a href="#" onclick="openChecklistModal(); closeMobileDrawer(); return false;">
+            <i class="fa-solid fa-pen-to-square text-indigo"></i> สรุปถอดบทเรียน (Checklist)
+          </a>
+        </li>
+        <li>
+          <a href="#" onclick="openSubmitBannerModal(); closeMobileDrawer(); return false;">
+            <i class="fa-solid fa-cloud-arrow-up text-cyan"></i> ส่งแบนเนอร์ของฉัน
+          </a>
+        </li>
+        <li>
+          <a href="#" onclick="openSelfAssessmentModal(); closeMobileDrawer(); return false;">
+            <i class="fa-solid fa-user-check text-rose"></i> แบบประเมินตนเอง
+          </a>
+        </li>
+      </ul>
+
+      <!-- Section 2: Teacher & Admin Tools (Toggled when Admin logged in) -->
+      <div id="mobileAdminSection" class="mobile-admin-section hidden mt-3">
+        <div class="drawer-section-title text-amber"><i class="fa-solid fa-sliders me-1"></i> เครื่องมือจัดการสำหรับครู</div>
+        <ul class="drawer-menu-list">
+          <li>
+            <a href="#" onclick="openAddMediaModal(); closeMobileDrawer(); return false;">
+              <i class="fa-solid fa-plus text-indigo"></i> เพิ่มสื่อการเรียนรู้ใหม่
+            </a>
+          </li>
+          <li>
+            <a href="#" onclick="openCategoriesModal(); closeMobileDrawer(); return false;">
+              <i class="fa-solid fa-tags text-amber"></i> จัดการหมวดหมู่สื่อ
+            </a>
+          </li>
+          <li>
+            <a href="#" onclick="openViewChecklistsModal(); closeMobileDrawer(); return false;">
+              <i class="fa-solid fa-clipboard-list text-cyan"></i> ตรวจสรุปถอดบทเรียนนักเรียน
+            </a>
+          </li>
+          <li>
+            <a href="#" onclick="openViewSelfAssessmentsModal(); closeMobileDrawer(); return false;">
+              <i class="fa-solid fa-clipboard-question text-rose"></i> ตรวจแบบประเมินตนเองนักเรียน
+            </a>
+          </li>
+          <li>
+            <a href="#" onclick="exportRatingsCSV(); closeMobileDrawer(); return false;">
+              <i class="fa-solid fa-file-excel text-emerald"></i> Export ผลประเมินดาว (CSV)
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Section 3: Auth Action -->
+      <div class="drawer-auth-footer mt-4">
+        <button id="mobileAdminAuthBtn" onclick="handleMobileAdminToggle()" class="btn btn-primary w-100 justify-content-center">
+          <i class="fa-solid fa-user-shield me-2"></i> <span id="mobileAdminAuthBtnText">เข้าสู่ระบบครู (แอดมิน)</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Banner แจ้งเตือนเมื่ออยู่ใน Admin Mode -->
   <div id="adminModeBanner" class="admin-banner hidden">
@@ -1009,6 +1100,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Logic JavaScript -->
-  <script src="app.js?v=61.0"></script>
+  <script src="app.js?v=62.0"></script>
 </body>
 </html>
