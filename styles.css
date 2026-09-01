@@ -1576,10 +1576,13 @@ body {
   }
   .brand-title-mobile {
     display: inline-block !important;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     font-weight: 700;
     color: #ffffff;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 110px);
   }
   .filter-tabs {
     display: flex !important;
