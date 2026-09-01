@@ -903,16 +903,16 @@ function renderChecklistsTable() {
 
     html += `
       <tr>
-        <td><strong>${escapeHtml(item.name)}</strong></td>
-        <td><span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span></td>
-        <td style="max-width: 200px;"><small>${escapeHtml(bestPractices)}</small></td>
-        <td style="max-width: 200px;"><small class="text-rose">${escapeHtml(thingsToAvoid)}</small></td>
-        <td style="width: 360px; max-width: 360px;">
+        <td style="min-width: 150px;"><strong>${escapeHtml(item.name)}</strong></td>
+        <td style="min-width: 110px; white-space: nowrap;"><span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span></td>
+        <td style="min-width: 200px;"><small>${escapeHtml(bestPractices)}</small></td>
+        <td style="min-width: 200px;"><small class="text-rose">${escapeHtml(thingsToAvoid)}</small></td>
+        <td style="min-width: 280px;">
           <small class="d-block mb-1">🔤 <strong>ฟอนต์:</strong> ${escapeHtml(ruleFont)}</small>
           <small class="d-block mb-1">🎨 <strong>สี:</strong> ${escapeHtml(ruleColor)}</small>
           <small class="d-block">🎯 <strong>CTA:</strong> ${escapeHtml(ruleCta)}</small>
         </td>
-        <td style="white-space: nowrap;">
+        <td style="min-width: 130px; white-space: nowrap; text-align: center;">
           <button class="btn btn-sm btn-outline me-1" onclick="openSingleChecklistDetail('${item.id}')" title="เปิดโชว์รายละเอียดการถอดบทเรียนรายบุคคล">
             <i class="fa-solid fa-eye me-1"></i> ดูรายละเอียด
           </button>
@@ -1119,14 +1119,14 @@ function renderSelfAssessmentsTable() {
 
     html += `
       <tr>
-        <td>
+        <td style="min-width: 150px;">
           <strong>${escapeHtml(item.name)}</strong><br>
-          <span class="badge badge-light">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span>
+          <span class="badge badge-light" style="white-space: nowrap;">${escapeHtml(studentClass)} / เลขที่ ${escapeHtml(studentNo)}</span>
         </td>
-        <td style="max-width: 250px;"><small>${escapeHtml(q1)}</small></td>
-        <td style="max-width: 250px;"><small class="text-indigo">${escapeHtml(q2)}</small></td>
-        <td style="max-width: 250px;"><small class="text-rose">${escapeHtml(q3)}</small></td>
-        <td style="white-space: nowrap;">
+        <td style="min-width: 220px;"><small>${escapeHtml(q1)}</small></td>
+        <td style="min-width: 220px;"><small class="text-indigo">${escapeHtml(q2)}</small></td>
+        <td style="min-width: 220px;"><small class="text-rose">${escapeHtml(q3)}</small></td>
+        <td style="min-width: 130px; white-space: nowrap; text-align: center;">
           <button class="btn btn-sm btn-outline me-1" onclick="openSingleSelfAssessmentDetail('${item.id}')" title="เปิดโชว์รายละเอียดการประเมินตนเองรายบุคคล">
             <i class="fa-solid fa-eye me-1"></i> ดูรายละเอียด
           </button>

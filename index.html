@@ -11,7 +11,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=57.0">
+  <link rel="stylesheet" href="styles.css?v=58.0">
 </head>
 <body>
 
@@ -509,7 +509,7 @@
 
   <!-- 4.5. Teacher View Student Self-Assessments Records Modal (สำหรับครูตรวจผลงาน A) -->
   <div id="viewSelfAssessmentsModal" class="modal-overlay hidden">
-    <div class="modal-container modal-lg">
+    <div class="modal-container modal-xl" style="max-width: 1200px; width: 95%;">
       <div class="modal-header">
         <h3><i class="fa-solid fa-clipboard-question text-rose me-2"></i>รายการแบบประเมินตนเองของนักเรียน (Self-Assessment)</h3>
         <button class="modal-close" onclick="closeViewSelfAssessmentsModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -531,11 +531,11 @@
           <table class="table-custom">
             <thead>
               <tr>
-                <th>นักเรียน</th>
-                <th>ข้อ 1 (สิ่งที่ค้นพบใหม่)</th>
-                <th>ข้อ 2 (Design Rule สำคัญที่สุด)</th>
-                <th>ข้อ 3 (ส่วนที่อยากปรับปรุง)</th>
-                <th>จัดการ</th>
+                <th style="min-width: 150px;">นักเรียน</th>
+                <th style="min-width: 220px;">ข้อ 1 (สิ่งที่ค้นพบใหม่)</th>
+                <th style="min-width: 220px;">ข้อ 2 (Design Rule สำคัญที่สุด)</th>
+                <th style="min-width: 220px;">ข้อ 3 (ส่วนที่อยากปรับปรุง)</th>
+                <th style="min-width: 130px; text-align: center; white-space: nowrap;">จัดการ</th>
               </tr>
             </thead>
             <tbody id="selfAssessmentsTableBody">
@@ -552,7 +552,7 @@
 
   <!-- 4. Teacher View Student Checklists Records Modal (สำหรับครูตรวจผลงาน K) -->
   <div id="viewChecklistsModal" class="modal-overlay hidden">
-    <div class="modal-container modal-lg">
+    <div class="modal-container modal-xl" style="max-width: 1250px; width: 95%;">
       <div class="modal-header">
         <h3><i class="fa-solid fa-clipboard-list text-indigo me-2"></i>รายงานแบบสรุปถอดบทเรียน (Define Checklist)</h3>
         <button class="modal-close" onclick="closeViewChecklistsModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -574,12 +574,12 @@
           <table class="table-custom">
             <thead>
               <tr>
-                <th>นักเรียน</th>
-                <th>ชั้น/เลขที่</th>
-                <th>ข้อดี (Best Practices)</th>
-                <th>ข้อควรระวัง (Things to Avoid)</th>
-                <th style="width: 360px;">กฎเหล็ก 3 ข้อ (ฟอนต์/สี/CTA)</th>
-                <th>จัดการ</th>
+                <th style="min-width: 150px;">นักเรียน</th>
+                <th style="min-width: 110px; white-space: nowrap;">ชั้น / เลขที่</th>
+                <th style="min-width: 200px;">ข้อดี (Best Practices)</th>
+                <th style="min-width: 200px;">ข้อควรระวัง (Things to Avoid)</th>
+                <th style="min-width: 280px;">กฎเหล็ก 3 ข้อ (ฟอนต์/สี/CTA)</th>
+                <th style="min-width: 130px; text-align: center; white-space: nowrap;">จัดการ</th>
               </tr>
             </thead>
             <tbody id="checklistsTableBody">
@@ -1009,6 +1009,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Application Logic JavaScript -->
-  <script src="app.js?v=57.0"></script>
+  <script src="app.js?v=58.0"></script>
 </body>
 </html>
