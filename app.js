@@ -178,9 +178,22 @@ function markRatingAsDeleted(mediaId, ratingId, reflection) {
   }
   localStorage.setItem(STORAGE_KEY_DELETED_RATINGS, JSON.stringify(Array.from(set)));
 }
-
 function filterDeletedRatingsFromMedia(mediaArray) {
-  // Cloudflare D1 Database คือฐานข้อมูลหลัก (Single Source of Truth) เพียงแห่งเดียวสำหรับทุกอุปกรณ์และทุกบราวเซอร์
+  const set = getDeletedRatingKeys();
+  if (set.size === 0 || !Array.isArray(mediaArray)) return mediaArray;
+
+  mediaArray.forEach(item => {
+    if (item && item.ratings && Array.isArray(item.ratings)) {
+      item.ratings = item.ratings.filter(r => {
+        if (!r) return false;
+        if (r.id && set.has(String(r.id))) return false;
+        const ref = (r.reflection || '').trim();
+        const key = `${item.id}:::${ref}`;
+        return !set.has(key) && (!ref || !set.has(ref));
+      });
+    }
+  });
+
   return mediaArray;
 }
 
@@ -222,9 +235,6 @@ function loadSelfAssessmentsFromStorage() {
 }
 
 function initApp() {
-  // Clear any old local masks so Cloudflare D1 Database is 100% authoritative single source of truth across all devices/browsers
-  localStorage.removeItem(STORAGE_KEY_DELETED_RATINGS);
-
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
