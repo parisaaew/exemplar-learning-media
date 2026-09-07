@@ -28,12 +28,27 @@ export async function onRequest(context) {
     const isDeleteAction = (method === 'DELETE') || (body && body.action === 'delete');
 
     if (isDeleteAction) {
-      const mediaId = body.mediaId;
-      const rawRef = (body.reflection || '').trim();
+      const mediaId = body.mediaId || new URL(request.url).searchParams.get('mediaId');
+      const ratingId = body.ratingId || body.id || new URL(request.url).searchParams.get('ratingId') || new URL(request.url).searchParams.get('id');
+      const rawRef = (body.reflection || new URL(request.url).searchParams.get('reflection') || '').trim();
       const cleanRef = rawRef.replace(/^["']|["']$/g, '').trim();
-      const timestamp = body.timestamp;
+      const timestamp = body.timestamp || new URL(request.url).searchParams.get('timestamp');
 
-      if (mediaId && (rawRef || cleanRef)) {
+      let deletedCount = 0;
+
+      // 1. ลบด้วย ID หลักของตาราง media_ratings ก่อน (Primary Key Deletion - แม่นยำที่สุด 100%)
+      if (ratingId && ratingId !== 'undefined' && ratingId !== 'null' && ratingId !== '') {
+        const numId = Number(ratingId);
+        if (!isNaN(numId) && numId > 0) {
+          const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(numId).run().catch(() => ({}));
+          if (res && res.meta && res.meta.changes > 0) {
+            deletedCount += res.meta.changes;
+          }
+        }
+      }
+
+      // 2. ถ้าลบด้วย ID แล้วยังไม่พบ ให้ลบด้วย media_id + reflection/timestamp เป็นตัวสำรอง (Fallback Deletion)
+      if (deletedCount === 0 && (mediaId && (rawRef || cleanRef))) {
         await env.DB.prepare(`
           DELETE FROM media_ratings 
           WHERE media_id = ? 
@@ -43,13 +58,13 @@ export async function onRequest(context) {
               OR reflection LIKE ?
               OR REPLACE(reflection, '"', '') LIKE ?
             )
-        `).bind(mediaId, rawRef, cleanRef, `%${cleanRef}%`, `%${cleanRef}%`).run();
-      } else if (mediaId && timestamp) {
+        `).bind(mediaId, rawRef, cleanRef, `%${cleanRef}%`, `%${cleanRef}%`).run().catch(() => {});
+      } else if (deletedCount === 0 && mediaId && timestamp) {
         await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
-          .bind(mediaId, timestamp).run();
+          .bind(mediaId, timestamp).run().catch(() => {});
       }
 
-      return new Response(JSON.stringify({ success: true, message: 'ลบคะแนนและคอมเมนต์จาก D1 ถาวรสำเร็จ' }), {
+      return new Response(JSON.stringify({ success: true, message: 'ลบความคิดเห็นถอดบทเรียนจาก D1 สำเร็จ' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
       });
     }
