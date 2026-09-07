@@ -1538,13 +1538,14 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
         focusCta: deletedRating ? (deletedRating.focusCta || deletedRating.focus_cta) : null
       };
 
-      Promise.all([
-        fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {}),
-        fetch(apiUrl, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {})
-      ]).then(() => {
+      fetch(apiUrl, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(() => {
         setTimeout(fetchLiveDataFromD1, 300);
         setTimeout(fetchLiveDataFromD1, 1200);
-      });
+      }).catch(err => console.log('Rating delete sync note:', err));
 
       showToast('ลบความคิดเห็นถอดบทเรียนเรียบร้อยแล้ว');
     }

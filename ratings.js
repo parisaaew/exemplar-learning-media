@@ -6,6 +6,7 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const method = request.method;
+  const url = new URL(request.url);
 
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -127,7 +128,7 @@ export async function onRequest(context) {
 
     if (method === 'POST') {
       // Guard: ป้องกันการกดลบแล้วเผลอเพิ่มบรรทัดใหม่
-      if (!body.mediaId || body.action === 'delete') {
+      if (!body.mediaId || body.action === 'delete' || url.searchParams.get('action') === 'delete') {
         return new Response(JSON.stringify({ message: 'No action taken' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
         });
