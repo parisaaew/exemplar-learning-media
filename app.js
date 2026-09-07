@@ -1513,7 +1513,7 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
       openMediaViewer(mediaId);
 
       fetch(getApiUrl('/ratings'), {
-        method: 'POST',
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'delete',

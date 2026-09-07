@@ -22,29 +22,46 @@ export async function onRequest(context) {
   }
 
   try {
+    let body = {};
+    try { body = await request.json(); } catch(e) {}
+
+    const isDeleteAction = (method === 'DELETE') || (body && body.action === 'delete');
+
+    if (isDeleteAction) {
+      const mediaId = body.mediaId;
+      const rawRef = (body.reflection || '').trim();
+      const cleanRef = rawRef.replace(/^["']|["']$/g, '').trim();
+      const timestamp = body.timestamp;
+
+      if (mediaId && (rawRef || cleanRef)) {
+        await env.DB.prepare(`
+          DELETE FROM media_ratings 
+          WHERE media_id = ? 
+            AND (
+              TRIM(reflection) = ? 
+              OR TRIM(reflection) = ? 
+              OR reflection LIKE ?
+              OR REPLACE(reflection, '"', '') LIKE ?
+            )
+        `).bind(mediaId, rawRef, cleanRef, `%${cleanRef}%`, `%${cleanRef}%`).run();
+      } else if (mediaId && timestamp) {
+        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
+          .bind(mediaId, timestamp).run();
+      }
+
+      return new Response(JSON.stringify({ success: true, message: 'ลบคะแนนและคอมเมนต์จาก D1 ถาวรสำเร็จ' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+      });
+    }
+
     if (method === 'POST') {
-      const body = await request.json().catch(() => ({}));
-
-      // รองรับการลบความคิดเห็นผ่าน POST action: 'delete' เพื่อความเสถียรสูงสุด 100% ข้ามเบราว์เซอร์
-      if (body.action === 'delete') {
-        const mediaId = body.mediaId;
-        const reflection = (body.reflection || '').trim();
-        const timestamp = body.timestamp;
-
-        if (mediaId && reflection) {
-          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND (TRIM(reflection) = ? OR reflection LIKE ?)')
-            .bind(mediaId, reflection, `%${reflection}%`).run();
-        } else if (mediaId && timestamp) {
-          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
-            .bind(mediaId, timestamp).run();
-        }
-
-        return new Response(JSON.stringify({ success: true, message: 'ลบคะแนนและคอมเมนต์จาก D1 ถาวรสำเร็จ' }), {
+      // Guard: ป้องกันการกดลบแล้วเผลอเพิ่มบรรทัดใหม่
+      if (!body.mediaId || body.action === 'delete') {
+        return new Response(JSON.stringify({ message: 'No action taken' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
         });
       }
 
-      // บันทึกคะแนนใหม่ปกติ
       await env.DB.prepare(`
         INSERT INTO media_ratings (media_id, readability, visual_harmony, focus_cta, reflection, timestamp)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -58,26 +75,6 @@ export async function onRequest(context) {
       ).run();
 
       return new Response(JSON.stringify({ success: true, message: 'บันทึกคะแนนดาวลง D1 Database สำเร็จ' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
-      });
-    }
-
-    if (method === 'DELETE') {
-      const body = await request.json().catch(() => ({}));
-      const url = new URL(request.url);
-      const mediaId = body.mediaId || url.searchParams.get('mediaId');
-      const reflection = (body.reflection || url.searchParams.get('reflection') || '').trim();
-      const timestamp = body.timestamp || url.searchParams.get('timestamp');
-
-      if (mediaId && reflection) {
-        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND (TRIM(reflection) = ? OR reflection LIKE ?)')
-          .bind(mediaId, reflection, `%${reflection}%`).run();
-      } else if (mediaId && timestamp) {
-        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
-          .bind(mediaId, timestamp).run();
-      }
-
-      return new Response(JSON.stringify({ success: true, message: 'ลบความคิดเห็นถอดบทเรียนจาก D1 สำเร็จ' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
       });
     }
