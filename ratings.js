@@ -28,17 +28,19 @@ export async function onRequest(context) {
     let body = {};
     try { body = await request.json(); } catch(e) {}
 
-    const isDeleteAction = (method === 'DELETE') || (body && body.action === 'delete');
+    const isDeleteAction = (method === 'DELETE') || 
+                           (body && body.action === 'delete') || 
+                           (url.searchParams.get('action') === 'delete');
 
     if (isDeleteAction) {
-      const mediaId = body.mediaId || new URL(request.url).searchParams.get('mediaId');
-      const ratingId = body.ratingId || body.id || new URL(request.url).searchParams.get('ratingId') || new URL(request.url).searchParams.get('id');
-      const rawRef = (body.reflection || new URL(request.url).searchParams.get('reflection') || '').trim();
+      const mediaId = body.mediaId || url.searchParams.get('mediaId');
+      const ratingId = body.ratingId || body.id || url.searchParams.get('ratingId') || url.searchParams.get('id');
+      const rawRef = (body.reflection || url.searchParams.get('reflection') || '').trim();
       const cleanRef = rawRef.replace(/^["']|["']$/g, '').trim();
-      const timestamp = body.timestamp || new URL(request.url).searchParams.get('timestamp');
-      const r1 = Number(body.readability || 0);
-      const r2 = Number(body.visualHarmony || body.visual_harmony || 0);
-      const r3 = Number(body.focusCta || body.focus_cta || 0);
+      const timestamp = body.timestamp || url.searchParams.get('timestamp');
+      const r1 = Number(body.readability || url.searchParams.get('readability') || 0);
+      const r2 = Number(body.visualHarmony || body.visual_harmony || url.searchParams.get('visualHarmony') || url.searchParams.get('visual_harmony') || 0);
+      const r3 = Number(body.focusCta || body.focus_cta || url.searchParams.get('focusCta') || url.searchParams.get('focus_cta') || 0);
 
       let deletedCount = 0;
 

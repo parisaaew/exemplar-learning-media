@@ -177,19 +177,7 @@ function markRatingAsDeleted(mediaId, reflection) {
   localStorage.setItem(STORAGE_KEY_DELETED_RATINGS, JSON.stringify(Array.from(set)));
 }
 function filterDeletedRatingsFromMedia(mediaArray) {
-  const set = getDeletedRatingKeys();
-  if (set.size === 0 || !Array.isArray(mediaArray)) return mediaArray;
-
-  mediaArray.forEach(item => {
-    if (item && item.ratings && Array.isArray(item.ratings)) {
-      item.ratings = item.ratings.filter(r => {
-        if (!r) return false;
-        const ref = (r.reflection || '').trim();
-        const key = `${item.id}:::${ref}`;
-        return !set.has(key) && (!ref || !set.has(ref));
-      });
-    }
-  });
+  // Cloudflare D1 Database คือฐานข้อมูลหลัก (Single Source of Truth) เพียงแห่งเดียวสำหรับทุกอุปกรณ์และทุกบราวเซอร์
   return mediaArray;
 }
 
@@ -231,6 +219,9 @@ function loadSelfAssessmentsFromStorage() {
 }
 
 function initApp() {
+  // Clear any old local masks so Cloudflare D1 Database is 100% authoritative single source of truth across all devices/browsers
+  localStorage.removeItem(STORAGE_KEY_DELETED_RATINGS);
+
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
@@ -1517,32 +1508,43 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
     if (targetIndex !== -1) {
       const deletedRating = item.ratings[targetIndex];
 
-      if (deletedRating && deletedRating.reflection) {
-        markRatingAsDeleted(mediaId, deletedRating.reflection);
-      }
-
       item.ratings.splice(targetIndex, 1);
 
       saveMediaToStorage();
       renderApp();
       openMediaViewer(mediaId);
 
-      fetch(getApiUrl('/ratings'), {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'delete',
-          mediaId: mediaId,
-          ratingId: deletedRating ? deletedRating.id || '' : '',
-          timestamp: deletedRating ? deletedRating.timestamp || '' : '',
-          reflection: deletedRating ? deletedRating.reflection || '' : '',
-          readability: deletedRating ? deletedRating.readability : null,
-          visualHarmony: deletedRating ? (deletedRating.visualHarmony || deletedRating.visual_harmony) : null,
-          focusCta: deletedRating ? (deletedRating.focusCta || deletedRating.focus_cta) : null
-        })
-      }).then(() => {
+      const queryParams = new URLSearchParams({
+        action: 'delete',
+        mediaId: mediaId || '',
+        ratingId: deletedRating ? (deletedRating.id || '') : '',
+        reflection: deletedRating ? (deletedRating.reflection || '') : '',
+        readability: deletedRating ? (deletedRating.readability || '') : '',
+        visualHarmony: deletedRating ? (deletedRating.visualHarmony || deletedRating.visual_harmony || '') : '',
+        focusCta: deletedRating ? (deletedRating.focusCta || deletedRating.focus_cta || '') : '',
+        timestamp: deletedRating ? (deletedRating.timestamp || '') : ''
+      }).toString();
+
+      const apiUrl = getApiUrl('/ratings?' + queryParams);
+
+      const payload = {
+        action: 'delete',
+        mediaId: mediaId,
+        ratingId: deletedRating ? deletedRating.id || '' : '',
+        timestamp: deletedRating ? deletedRating.timestamp || '' : '',
+        reflection: deletedRating ? deletedRating.reflection || '' : '',
+        readability: deletedRating ? deletedRating.readability : null,
+        visualHarmony: deletedRating ? (deletedRating.visualHarmony || deletedRating.visual_harmony) : null,
+        focusCta: deletedRating ? (deletedRating.focusCta || deletedRating.focus_cta) : null
+      };
+
+      Promise.all([
+        fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {}),
+        fetch(apiUrl, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => {})
+      ]).then(() => {
         setTimeout(fetchLiveDataFromD1, 300);
-      }).catch(err => console.log('Rating delete sync note:', err));
+        setTimeout(fetchLiveDataFromD1, 1200);
+      });
 
       showToast('ลบความคิดเห็นถอดบทเรียนเรียบร้อยแล้ว');
     }
