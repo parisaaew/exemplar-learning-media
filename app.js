@@ -265,7 +265,6 @@ function fetchLiveDataFromD1() {
     let hasChanged = false;
 
     if (Array.isArray(mediaData) && mediaData.length > 0) {
-      filterDeletedRatingsFromMedia(mediaData);
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
         saveMediaToStorage();
@@ -1507,12 +1506,11 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
 
     if (targetIndex !== -1) {
       const deletedRating = item.ratings[targetIndex];
-      if (deletedRating && deletedRating.reflection) {
-        markRatingAsDeleted(mediaId, deletedRating.reflection);
-      }
       item.ratings.splice(targetIndex, 1);
 
       saveMediaToStorage();
+      renderApp();
+      openMediaViewer(mediaId);
 
       fetch(getApiUrl('/ratings'), {
         method: 'POST',
@@ -1524,10 +1522,10 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
           timestamp: deletedRating ? deletedRating.timestamp || '' : '',
           reflection: deletedRating ? deletedRating.reflection || '' : ''
         })
+      }).then(() => {
+        setTimeout(fetchLiveDataFromD1, 600);
       }).catch(err => console.log('Rating delete sync note:', err));
 
-      renderApp();
-      openMediaViewer(mediaId);
       showToast('ลบความคิดเห็นถอดบทเรียนเรียบร้อยแล้ว');
     }
   }
