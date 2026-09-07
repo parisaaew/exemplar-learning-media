@@ -235,6 +235,17 @@ function loadSelfAssessmentsFromStorage() {
 }
 
 function initApp() {
+  // Auto-purge stale local cache on mobile devices (e.g. iPad Safari) when a new build is deployed
+  const CURRENT_BUILD = 'v86.0';
+  if (localStorage.getItem('exemplar_build_version') !== CURRENT_BUILD) {
+    localStorage.removeItem(STORAGE_KEY_MEDIA);
+    localStorage.removeItem(STORAGE_KEY_CATEGORIES);
+    localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
+    localStorage.removeItem(STORAGE_KEY_SELF_ASSESSMENTS);
+    localStorage.removeItem(STORAGE_KEY_DELETED_RATINGS);
+    localStorage.setItem('exemplar_build_version', CURRENT_BUILD);
+  }
+
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
