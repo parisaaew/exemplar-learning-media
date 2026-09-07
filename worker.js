@@ -164,8 +164,8 @@ export default {
             }
           }
 
-          // Stage 2: ลบด้วย media_id + Reflection Match ( Exact / Substring / Trim Match )
-          if (deletedCount === 0 && (mediaId || decodedMediaId) && (rawRef || cleanRef)) {
+          // Stage 2: ลบด้วย media_id + Reflection Match (ลบทุกสำเนาที่ซ้ำกันออกทั้งหมดจาก D1)
+          if ((rawRef || cleanRef) && (mediaId || decodedMediaId)) {
             const refPattern = `%${cleanRef.substring(0, 10)}%`;
             const res = await env.DB.prepare(`
               DELETE FROM media_ratings 
@@ -182,19 +182,14 @@ export default {
             if (changes > 0) deletedCount += changes;
           }
 
-          // Stage 3: ลบด้วย media_id + คะแนน 3 มิติ (SELECT id แล้ว DELETE)
+          // Stage 3: หากยังลบไม่สำเร็จ ให้ค้นและลบด้วยคะแนน 3 มิติย้อนหลัง
           if (deletedCount === 0 && (mediaId || decodedMediaId) && r1 > 0 && r2 > 0 && r3 > 0) {
-            const row = await env.DB.prepare(`
-              SELECT id FROM media_ratings 
+            const res = await env.DB.prepare(`
+              DELETE FROM media_ratings 
               WHERE (media_id = ? OR media_id = ?) AND readability = ? AND visual_harmony = ? AND focus_cta = ?
-              ORDER BY id DESC LIMIT 1
-            `).bind(mediaId, decodedMediaId, r1, r2, r3).first().catch(() => null);
-
-            if (row && row.id) {
-              const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
-              const changes = (res && res.meta) ? (res.meta.changes || res.meta.rows_written || 0) : 0;
-              if (changes > 0) deletedCount += changes;
-            }
+            `).bind(mediaId, decodedMediaId, r1, r2, r3).run().catch(() => ({}));
+            const changes = (res && res.meta) ? (res.meta.changes || res.meta.rows_written || 0) : 0;
+            if (changes > 0) deletedCount += changes;
           }
 
           // Stage 4: Safety Fallback - ลบรายการประเมินล่าสุดของ media_id นั้น 1 แถว (เฉพาะกรณีไม่ระบุ ratingId และไม่ระบุ reflection)
