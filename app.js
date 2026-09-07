@@ -1408,6 +1408,7 @@ function openMediaViewer(mediaId) {
     } else {
       let refHtml = '';
       validRatings.forEach((r, idx) => {
+        const realIdx = item.ratings.indexOf(r);
         const r1 = Number(r.readability || 5);
         const r2 = Number(r.visualHarmony || r.visual_harmony || 5);
         const r3 = Number(r.focusCta || r.focus_cta || 5);
@@ -1425,7 +1426,7 @@ function openMediaViewer(mediaId) {
               <div class="d-flex align-items-center gap-2">
                 <small class="text-muted"><i class="fa-solid fa-clock me-1"></i>${r.timestamp || '-'}</small>
                 ${isAdminLoggedIn ? `
-                  <button class="btn btn-sm btn-ghost text-rose ms-1" onclick="deleteComment(event, '${item.id}', '${r.id || idx}')" title="ลบความคิดเห็นถอดบทเรียนนี้ (เฉพาะแอดมิน)" style="padding: 0.2rem 0.55rem; font-size: 0.775rem;">
+                  <button class="btn btn-sm btn-ghost text-rose ms-1" onclick="deleteComment(event, '${item.id}', '${r.id || ''}', ${realIdx})" title="ลบความคิดเห็นถอดบทเรียนนี้ (เฉพาะแอดมิน)" style="padding: 0.2rem 0.55rem; font-size: 0.775rem;">
                     <i class="fa-solid fa-trash me-1"></i>ลบ
                   </button>
                 ` : ''}
@@ -1452,7 +1453,7 @@ function closeViewerModal() {
   document.getElementById('viewerContentContainer').innerHTML = '';
 }
 
-function deleteComment(event, mediaId, ratingIdOrIdx) {
+function deleteComment(event, mediaId, ratingId, realIdx) {
   if (event) event.stopPropagation();
 
   const item = mediaList.find(m => m.id === mediaId);
@@ -1460,24 +1461,31 @@ function deleteComment(event, mediaId, ratingIdOrIdx) {
 
   if (confirm(`คุณครูต้องการลบความคิดเห็นถอดบทเรียนรายการนี้ใช่หรือไม่?`)) {
     let targetIndex = -1;
-    if (typeof ratingIdOrIdx === 'string' && ratingIdOrIdx.startsWith('rat_')) {
-      targetIndex = item.ratings.findIndex(r => r.id === ratingIdOrIdx);
-    } else {
-      const idxNum = parseInt(ratingIdOrIdx, 10);
-      if (!isNaN(idxNum) && idxNum >= 0 && idxNum < item.ratings.length) {
-        targetIndex = idxNum;
-      }
+
+    if (ratingId && ratingId !== 'undefined' && ratingId !== 'null' && ratingId !== '') {
+      targetIndex = item.ratings.findIndex(r => r.id === ratingId);
+    }
+
+    if (targetIndex === -1 && typeof realIdx === 'number' && realIdx >= 0 && realIdx < item.ratings.length) {
+      targetIndex = realIdx;
     }
 
     if (targetIndex !== -1) {
       const deletedRating = item.ratings[targetIndex];
       item.ratings.splice(targetIndex, 1);
 
-      saveMediaListToStorage();
+      saveMediaToStorage();
 
-      if (deletedRating && deletedRating.id) {
-        fetch(getApiUrl(`/ratings?id=${encodeURIComponent(deletedRating.id)}&mediaId=${encodeURIComponent(mediaId)}`), { method: 'DELETE' }).catch(() => {});
-      }
+      fetch(getApiUrl('/ratings'), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaId: mediaId,
+          ratingId: deletedRating.id || '',
+          timestamp: deletedRating.timestamp || '',
+          reflection: deletedRating.reflection || ''
+        })
+      }).catch(err => console.log('Rating delete sync note:', err));
 
       renderApp();
       openMediaViewer(mediaId);
