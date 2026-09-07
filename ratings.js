@@ -18,12 +18,33 @@ export async function onRequest(context) {
   }
 
   if (!env.DB) {
-    return new Response(JSON.stringify({ error: 'DB Binding Not Found on Pages' }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: 'DB Binding Not Found' }), { status: 500, headers: corsHeaders });
   }
 
   try {
     if (method === 'POST') {
-      const body = await request.json();
+      const body = await request.json().catch(() => ({}));
+
+      // รองรับการลบความคิดเห็นผ่าน POST action: 'delete' เพื่อความเสถียรสูงสุด 100% ข้ามเบราว์เซอร์
+      if (body.action === 'delete') {
+        const mediaId = body.mediaId;
+        const reflection = (body.reflection || '').trim();
+        const timestamp = body.timestamp;
+
+        if (mediaId && reflection) {
+          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND (TRIM(reflection) = ? OR reflection LIKE ?)')
+            .bind(mediaId, reflection, `%${reflection}%`).run();
+        } else if (mediaId && timestamp) {
+          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
+            .bind(mediaId, timestamp).run();
+        }
+
+        return new Response(JSON.stringify({ success: true, message: 'ลบคะแนนและคอมเมนต์จาก D1 ถาวรสำเร็จ' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
+        });
+      }
+
+      // บันทึกคะแนนใหม่ปกติ
       await env.DB.prepare(`
         INSERT INTO media_ratings (media_id, readability, visual_harmony, focus_cta, reflection, timestamp)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -45,15 +66,15 @@ export async function onRequest(context) {
       const body = await request.json().catch(() => ({}));
       const url = new URL(request.url);
       const mediaId = body.mediaId || url.searchParams.get('mediaId');
-      const reflection = body.reflection || url.searchParams.get('reflection');
+      const reflection = (body.reflection || url.searchParams.get('reflection') || '').trim();
       const timestamp = body.timestamp || url.searchParams.get('timestamp');
 
       if (mediaId && reflection) {
-        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND reflection = ?')
-          .bind(mediaId, reflection).run().catch(() => {});
+        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND (TRIM(reflection) = ? OR reflection LIKE ?)')
+          .bind(mediaId, reflection, `%${reflection}%`).run();
       } else if (mediaId && timestamp) {
         await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
-          .bind(mediaId, timestamp).run().catch(() => {});
+          .bind(mediaId, timestamp).run();
       }
 
       return new Response(JSON.stringify({ success: true, message: 'ลบความคิดเห็นถอดบทเรียนจาก D1 สำเร็จ' }), {

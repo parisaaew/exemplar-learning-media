@@ -1515,9 +1515,10 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
       saveMediaToStorage();
 
       fetch(getApiUrl('/ratings'), {
-        method: 'DELETE',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'delete',
           mediaId: mediaId,
           ratingId: deletedRating ? deletedRating.id || '' : '',
           timestamp: deletedRating ? deletedRating.timestamp || '' : '',
