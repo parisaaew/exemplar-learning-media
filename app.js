@@ -1422,7 +1422,14 @@ function openMediaViewer(mediaId) {
                 <span class="rating-stars-mini" style="font-size: 0.85rem;">${starsHtml}</span>
                 <strong class="text-amber" style="font-size: 0.9rem;">${itemAvg}</strong>
               </div>
-              <small class="text-muted"><i class="fa-solid fa-clock me-1"></i>${r.timestamp || '-'}</small>
+              <div class="d-flex align-items-center gap-2">
+                <small class="text-muted"><i class="fa-solid fa-clock me-1"></i>${r.timestamp || '-'}</small>
+                ${isAdminLoggedIn ? `
+                  <button class="btn btn-sm btn-ghost text-rose ms-1" onclick="deleteComment(event, '${item.id}', '${r.id || idx}')" title="ลบความคิดเห็นถอดบทเรียนนี้ (เฉพาะแอดมิน)" style="padding: 0.2rem 0.55rem; font-size: 0.775rem;">
+                    <i class="fa-solid fa-trash me-1"></i>ลบ
+                  </button>
+                ` : ''}
+              </div>
             </div>
             <p class="reflection-card-text mt-2 mb-2">"${escapeHtml(r.reflection)}"</p>
             <div class="reflection-card-breakdown">
@@ -1443,6 +1450,40 @@ function openMediaViewer(mediaId) {
 function closeViewerModal() {
   document.getElementById('mediaViewerModal').classList.add('hidden');
   document.getElementById('viewerContentContainer').innerHTML = '';
+}
+
+function deleteComment(event, mediaId, ratingIdOrIdx) {
+  if (event) event.stopPropagation();
+
+  const item = mediaList.find(m => m.id === mediaId);
+  if (!item || !item.ratings) return;
+
+  if (confirm(`คุณครูต้องการลบความคิดเห็นถอดบทเรียนรายการนี้ใช่หรือไม่?`)) {
+    let targetIndex = -1;
+    if (typeof ratingIdOrIdx === 'string' && ratingIdOrIdx.startsWith('rat_')) {
+      targetIndex = item.ratings.findIndex(r => r.id === ratingIdOrIdx);
+    } else {
+      const idxNum = parseInt(ratingIdOrIdx, 10);
+      if (!isNaN(idxNum) && idxNum >= 0 && idxNum < item.ratings.length) {
+        targetIndex = idxNum;
+      }
+    }
+
+    if (targetIndex !== -1) {
+      const deletedRating = item.ratings[targetIndex];
+      item.ratings.splice(targetIndex, 1);
+
+      saveMediaListToStorage();
+
+      if (deletedRating && deletedRating.id) {
+        fetch(getApiUrl(`/ratings?id=${encodeURIComponent(deletedRating.id)}&mediaId=${encodeURIComponent(mediaId)}`), { method: 'DELETE' }).catch(() => {});
+      }
+
+      renderApp();
+      openMediaViewer(mediaId);
+      showToast('ลบความคิดเห็นถอดบทเรียนเรียบร้อยแล้ว');
+    }
+  }
 }
 
 function getYouTubeVideoId(url) {
