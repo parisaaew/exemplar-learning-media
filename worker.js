@@ -139,7 +139,11 @@ export default {
                                (url.searchParams.get('action') === 'delete');
 
         if (isDeleteAction) {
-          const mediaId = body.mediaId || url.searchParams.get('mediaId');
+          const rawMediaId = (body.mediaId || url.searchParams.get('mediaId') || '').trim();
+          let decodedMediaId = rawMediaId;
+          try { decodedMediaId = decodeURIComponent(rawMediaId).trim(); } catch(e) {}
+          const mediaId = rawMediaId || decodedMediaId;
+
           const ratingId = body.ratingId || body.id || url.searchParams.get('ratingId') || url.searchParams.get('id');
           const rawRef = (body.reflection || url.searchParams.get('reflection') || '').trim();
           const cleanRef = rawRef.replace(/^["']|["']$/g, '').trim();
@@ -155,18 +159,17 @@ export default {
             const numId = Number(ratingId);
             if (!isNaN(numId) && numId > 0) {
               const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(numId).run().catch(() => ({}));
-              if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
-                deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
-              }
+              const changes = (res && res.meta) ? (res.meta.changes || res.meta.rows_written || 0) : 0;
+              if (changes > 0) deletedCount += changes;
             }
           }
 
           // Stage 2: ลบด้วย media_id + Reflection Match ( Exact / Substring / Trim Match )
-          if (deletedCount === 0 && mediaId && (rawRef || cleanRef)) {
+          if (deletedCount === 0 && (mediaId || decodedMediaId) && (rawRef || cleanRef)) {
             const refPattern = `%${cleanRef.substring(0, 10)}%`;
             const res = await env.DB.prepare(`
               DELETE FROM media_ratings 
-              WHERE media_id = ? 
+              WHERE (media_id = ? OR media_id = ?)
                 AND (
                   reflection = ? 
                   OR TRIM(reflection) = ? 
@@ -174,41 +177,38 @@ export default {
                   OR reflection LIKE ?
                   OR REPLACE(reflection, '"', '') LIKE ?
                 )
-            `).bind(mediaId, rawRef, rawRef, cleanRef, refPattern, refPattern).run().catch(() => ({}));
-            if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
-              deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
-            }
+            `).bind(mediaId, decodedMediaId, rawRef, rawRef, cleanRef, refPattern, refPattern).run().catch(() => ({}));
+            const changes = (res && res.meta) ? (res.meta.changes || res.meta.rows_written || 0) : 0;
+            if (changes > 0) deletedCount += changes;
           }
 
           // Stage 3: ลบด้วย media_id + คะแนน 3 มิติ (SELECT id แล้ว DELETE)
-          if (deletedCount === 0 && mediaId && r1 > 0 && r2 > 0 && r3 > 0) {
+          if (deletedCount === 0 && (mediaId || decodedMediaId) && r1 > 0 && r2 > 0 && r3 > 0) {
             const row = await env.DB.prepare(`
               SELECT id FROM media_ratings 
-              WHERE media_id = ? AND readability = ? AND visual_harmony = ? AND focus_cta = ?
+              WHERE (media_id = ? OR media_id = ?) AND readability = ? AND visual_harmony = ? AND focus_cta = ?
               ORDER BY id DESC LIMIT 1
-            `).bind(mediaId, r1, r2, r3).first().catch(() => null);
+            `).bind(mediaId, decodedMediaId, r1, r2, r3).first().catch(() => null);
 
             if (row && row.id) {
               const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
-              if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
-                deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
-              }
+              const changes = (res && res.meta) ? (res.meta.changes || res.meta.rows_written || 0) : 0;
+              if (changes > 0) deletedCount += changes;
             }
           }
 
           // Stage 4: Safety Fallback - ลบรายการประเมินล่าสุดของ media_id นั้น 1 แถว การันตีลบออก 100%
-          if (deletedCount === 0 && mediaId) {
+          if (deletedCount === 0 && (mediaId || decodedMediaId)) {
             const row = await env.DB.prepare(`
               SELECT id FROM media_ratings 
-              WHERE media_id = ? 
+              WHERE media_id = ? OR media_id = ?
               ORDER BY id DESC LIMIT 1
-            `).bind(mediaId).first().catch(() => null);
+            `).bind(mediaId, decodedMediaId).first().catch(() => null);
 
             if (row && row.id) {
               const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
-              if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
-                deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
-              }
+              const changes = (res && res.meta) ? (res.meta.changes || res.meta.rows_written || 0) : 0;
+              if (changes > 0) deletedCount += changes;
             }
           }
 
