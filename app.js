@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const STORAGE_KEY_DELETED_MEDIA = 'exemplar_deleted_media_v1';
 const STORAGE_KEY_DELETED_CHECKLISTS = 'exemplar_deleted_checklists_v1';
+const STORAGE_KEY_DELETED_RATINGS = 'exemplar_deleted_ratings_v1';
 
 function getDeletedMediaIds() {
   try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_MEDIA) || '[]')); } catch (e) { return new Set(); }
@@ -164,12 +165,45 @@ function markChecklistAsDeleted(id) {
   localStorage.setItem(STORAGE_KEY_DELETED_CHECKLISTS, JSON.stringify(Array.from(set)));
 }
 
+function getDeletedRatingKeys() {
+  try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_RATINGS) || '[]')); } catch (e) { return new Set(); }
+}
+function markRatingAsDeleted(mediaId, reflection) {
+  if (!reflection) return;
+  const set = getDeletedRatingKeys();
+  const refTrim = reflection.trim();
+  set.add(`${mediaId}:::${refTrim}`);
+  set.add(refTrim);
+  localStorage.setItem(STORAGE_KEY_DELETED_RATINGS, JSON.stringify(Array.from(set)));
+}
+function filterDeletedRatingsFromMedia(mediaArray) {
+  const set = getDeletedRatingKeys();
+  if (set.size === 0 || !Array.isArray(mediaArray)) return mediaArray;
+
+  mediaArray.forEach(item => {
+    if (item && item.ratings && Array.isArray(item.ratings)) {
+      item.ratings = item.ratings.filter(r => {
+        if (!r) return false;
+        const ref = (r.reflection || '').trim();
+        const key = `${item.id}:::${ref}`;
+        return !set.has(key) && (!ref || !set.has(ref));
+      });
+    }
+  });
+  return mediaArray;
+}
+
 function loadMediaFromStorage() {
   const storedMedia = localStorage.getItem(STORAGE_KEY_MEDIA);
   if (storedMedia) {
-    try { return JSON.parse(storedMedia); } catch (e) { return [...INITIAL_MEDIA_DATA]; }
+    try {
+      const parsed = JSON.parse(storedMedia);
+      return filterDeletedRatingsFromMedia(parsed);
+    } catch (e) {
+      return filterDeletedRatingsFromMedia([...INITIAL_MEDIA_DATA]);
+    }
   }
-  return [...INITIAL_MEDIA_DATA];
+  return filterDeletedRatingsFromMedia([...INITIAL_MEDIA_DATA]);
 }
 
 function loadCategoriesFromStorage() {
@@ -231,6 +265,7 @@ function fetchLiveDataFromD1() {
     let hasChanged = false;
 
     if (Array.isArray(mediaData) && mediaData.length > 0) {
+      filterDeletedRatingsFromMedia(mediaData);
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
         saveMediaToStorage();
@@ -1472,6 +1507,9 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
 
     if (targetIndex !== -1) {
       const deletedRating = item.ratings[targetIndex];
+      if (deletedRating && deletedRating.reflection) {
+        markRatingAsDeleted(mediaId, deletedRating.reflection);
+      }
       item.ratings.splice(targetIndex, 1);
 
       saveMediaToStorage();
@@ -1481,9 +1519,9 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mediaId: mediaId,
-          ratingId: deletedRating.id || '',
-          timestamp: deletedRating.timestamp || '',
-          reflection: deletedRating.reflection || ''
+          ratingId: deletedRating ? deletedRating.id || '' : '',
+          timestamp: deletedRating ? deletedRating.timestamp || '' : '',
+          reflection: deletedRating ? deletedRating.reflection || '' : ''
         })
       }).catch(err => console.log('Rating delete sync note:', err));
 
