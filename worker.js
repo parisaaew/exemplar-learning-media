@@ -15,6 +15,9 @@ export default {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     };
 
     if (request.method === 'OPTIONS') {
@@ -23,21 +26,29 @@ export default {
 
     try {
       // -------------------------------------------------------------
-      // 1. API: ดึงรายการสื่อทั้งหมดจาก D1 Database (ไม่ re-seed ซ้ำเมื่อถูกลบ)
+      // 1. API: ดึงรายการสื่อทั้งหมดจาก D1 Database
       // -------------------------------------------------------------
       if (pathname === '/api/media' && request.method === 'GET') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
 
-        const { results: mediaRows } = await env.DB.prepare(
-          'SELECT * FROM media_items ORDER BY created_at DESC'
-        ).all();
+        let mediaRows = [];
+        try {
+          const { results } = await env.DB.prepare('SELECT * FROM media_items ORDER BY rowid DESC').all();
+          mediaRows = results || [];
+        } catch (e) {
+          const { results } = await env.DB.prepare('SELECT * FROM media_items').all();
+          mediaRows = results || [];
+        }
 
-        const { results: ratingRows } = await env.DB.prepare(
-          'SELECT * FROM media_ratings'
-        ).all();
+        let ratingRows = [];
+        try {
+          const { results } = await env.DB.prepare('SELECT * FROM media_ratings').all();
+          ratingRows = results || [];
+        } catch (e) {}
 
         const formattedList = (mediaRows || []).map(m => {
           const itemRatings = (ratingRows || []).filter(r => r.media_id === m.id).map(r => ({
+            id: r.id, // ส่ง ID หลักไปฝั่ง Frontend เพื่อลบตรงเป๊ะ 100%
             readability: r.readability,
             visualHarmony: r.visual_harmony,
             focusCta: r.focus_cta,
@@ -61,11 +72,20 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 2. API: บันทึกสื่อใหม่ / แก้ไขสื่อ ลง D1 Database (INSERT OR REPLACE)
+      // 2. API: บันทึกสื่อใหม่ / แก้ไขสื่อ / ลบสื่อ (POST)
       // -------------------------------------------------------------
       if (pathname === '/api/media' && request.method === 'POST') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
-        const body = await request.json();
+        const body = await request.json().catch(() => ({}));
+
+        if (body.action === 'delete') {
+          const targetId = (body.id || queryId || '').trim();
+          if (targetId) {
+            await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ?').bind(targetId).run().catch(() => {});
+            await env.DB.prepare('DELETE FROM media_items WHERE id = ?').bind(targetId).run().catch(() => {});
+          }
+          return jsonResponse({ success: true, message: `ลบสื่อ ${targetId} จาก D1 สำเร็จ` }, corsHeaders);
+        }
 
         await env.DB.prepare(`
           INSERT INTO media_items (id, title, category, academic_year, url, thumbnail, tags, description)
@@ -99,78 +119,181 @@ export default {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
         if (!queryId) return jsonResponse({ error: 'Missing media ID' }, corsHeaders, 400);
 
-        await env.DB.prepare('DELETE FROM media_items WHERE id = ?').bind(queryId).run();
-        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ?').bind(queryId).run();
+        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ?').bind(queryId).run().catch(() => {});
+        await env.DB.prepare('DELETE FROM media_items WHERE id = ?').bind(queryId).run().catch(() => {});
 
         return jsonResponse({ success: true, message: `ลบสื่อ ${queryId} จาก Cloudflare D1 เรียบร้อย` }, corsHeaders);
       }
 
       // -------------------------------------------------------------
-      // 4. API: บันทึกคะแนนดาว 3 มิติ ลง D1 Database
+      // 4. API: บริหารจัดการคะแนนดาว 3 มิติ (ลบ / เพิ่ม)
       // -------------------------------------------------------------
-      if (pathname === '/api/ratings' && request.method === 'POST') {
+      if (pathname === '/api/ratings') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
-        const body = await request.json();
 
-        await env.DB.prepare(`
-          INSERT INTO media_ratings (media_id, readability, visual_harmony, focus_cta, reflection, timestamp)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).bind(
-          body.mediaId,
-          body.readability || 5,
-          body.visualHarmony || 5,
-          body.focusCta || 5,
-          body.reflection || '',
-          body.timestamp || new Date().toISOString().split('T')[0]
-        ).run();
+        let body = {};
+        try { body = await request.json(); } catch(e) {}
 
-        return jsonResponse({ success: true, message: 'บันทึกคะแนนดาวลง Cloudflare D1 สำเร็จ' }, corsHeaders);
+        const isDeleteAction = (request.method === 'DELETE') || 
+                               (body && body.action === 'delete') || 
+                               (url.searchParams.get('action') === 'delete');
+
+        if (isDeleteAction) {
+          const mediaId = body.mediaId || url.searchParams.get('mediaId');
+          const ratingId = body.ratingId || body.id || url.searchParams.get('ratingId') || url.searchParams.get('id');
+          const rawRef = (body.reflection || url.searchParams.get('reflection') || '').trim();
+          const cleanRef = rawRef.replace(/^["']|["']$/g, '').trim();
+          const timestamp = body.timestamp || url.searchParams.get('timestamp');
+          const r1 = Number(body.readability || url.searchParams.get('readability') || 0);
+          const r2 = Number(body.visualHarmony || body.visual_harmony || url.searchParams.get('visualHarmony') || url.searchParams.get('visual_harmony') || 0);
+          const r3 = Number(body.focusCta || body.focus_cta || url.searchParams.get('focusCta') || url.searchParams.get('focus_cta') || 0);
+
+          let deletedCount = 0;
+
+          // Stage 1: ลบด้วย Primary Key ID
+          if (ratingId && ratingId !== 'undefined' && ratingId !== 'null' && ratingId !== '') {
+            const numId = Number(ratingId);
+            if (!isNaN(numId) && numId > 0) {
+              const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(numId).run().catch(() => ({}));
+              if (res && res.meta && res.meta.changes > 0) deletedCount += res.meta.changes;
+            }
+          }
+
+          // Stage 2: ลบด้วย media_id + Exact Reflection Match
+          if (deletedCount === 0 && mediaId && (rawRef || cleanRef)) {
+            const res = await env.DB.prepare(`
+              DELETE FROM media_ratings 
+              WHERE media_id = ? 
+                AND (
+                  TRIM(reflection) = ? 
+                  OR TRIM(reflection) = ? 
+                  OR reflection = ? 
+                  OR REPLACE(reflection, '"', '') = ?
+                )
+            `).bind(mediaId, rawRef, cleanRef, rawRef, cleanRef).run().catch(() => ({}));
+            if (res && res.meta && res.meta.changes > 0) deletedCount += res.meta.changes;
+          }
+
+          // Stage 3: ลบด้วย media_id + Substring Match
+          if (deletedCount === 0 && mediaId && cleanRef && cleanRef.length >= 3) {
+            const searchPattern = `%${cleanRef.substring(0, 15)}%`;
+            const res = await env.DB.prepare(`
+              DELETE FROM media_ratings 
+              WHERE media_id = ? 
+                AND (
+                  reflection LIKE ? 
+                  OR REPLACE(reflection, '"', '') LIKE ?
+                )
+            `).bind(mediaId, searchPattern, searchPattern).run().catch(() => ({}));
+            if (res && res.meta && res.meta.changes > 0) deletedCount += res.meta.changes;
+          }
+
+          // Stage 4: ลบด้วย media_id + Scores + Timestamp (LIMIT 1)
+          if (deletedCount === 0 && mediaId && r1 > 0 && r2 > 0 && r3 > 0 && timestamp) {
+            const row = await env.DB.prepare(`
+              SELECT id FROM media_ratings 
+              WHERE media_id = ? AND readability = ? AND visual_harmony = ? AND focus_cta = ? AND timestamp = ?
+              ORDER BY id DESC LIMIT 1
+            `).bind(mediaId, r1, r2, r3, timestamp).first().catch(() => null);
+
+            if (row && row.id) {
+              const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
+              if (res && res.meta && res.meta.changes > 0) deletedCount += res.meta.changes;
+            }
+          }
+
+          // Stage 5: ลบด้วย คะแนน 3 มิติ (LIMIT 1)
+          if (deletedCount === 0 && mediaId && r1 > 0 && r2 > 0 && r3 > 0) {
+            const row = await env.DB.prepare(`
+              SELECT id FROM media_ratings 
+              WHERE media_id = ? AND readability = ? AND visual_harmony = ? AND focus_cta = ?
+              ORDER BY id DESC LIMIT 1
+            `).bind(mediaId, r1, r2, r3).first().catch(() => null);
+
+            if (row && row.id) {
+              const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
+              if (res && res.meta && res.meta.changes > 0) deletedCount += res.meta.changes;
+            }
+          }
+
+          return jsonResponse({ success: true, message: 'ลบความคิดเห็นจาก Cloudflare D1 สำเร็จ', deletedCount }, corsHeaders);
+        }
+
+        if (request.method === 'POST') {
+          // Guard: ป้องกันการเพิ่มข้อมูลใหม่ขณะสั่งลบ
+          if (!body.mediaId || body.action === 'delete' || url.searchParams.get('action') === 'delete') {
+            return jsonResponse({ message: 'No action taken for delete' }, corsHeaders);
+          }
+
+          await env.DB.prepare(`
+            INSERT INTO media_ratings (media_id, readability, visual_harmony, focus_cta, reflection, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).bind(
+            body.mediaId,
+            body.readability || 5,
+            body.visualHarmony || 5,
+            body.focusCta || 5,
+            body.reflection || '',
+            body.timestamp || new Date().toISOString().split('T')[0]
+          ).run();
+
+          return jsonResponse({ success: true, message: 'บันทึกคะแนนดาวลง Cloudflare D1 สำเร็จ' }, corsHeaders);
+        }
       }
 
       // -------------------------------------------------------------
-      // 5. API: บันทึกสรุปถอดบทเรียน K ลง D1 Database
+      // 5. API: บันทึกสรุปถอดบทเรียน K (POST & DELETE)
       // -------------------------------------------------------------
-      if (pathname === '/api/checklists' && request.method === 'POST') {
+      if (pathname === '/api/checklists') {
         if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
-        const body = await request.json();
 
-        await env.DB.prepare(`
-          INSERT INTO student_checklists (id, name, student_class, student_no, best_practices, things_to_avoid, rule_color, rule_font, rule_cta, timestamp)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          body.id || 'chk-' + Date.now(),
-          body.name,
-          body.studentClass,
-          body.studentNo,
-          body.bestPractices,
-          body.thingsToAvoid,
-          body.ruleColor,
-          body.ruleFont,
-          body.ruleCta,
-          body.timestamp || new Date().toISOString().split('T')[0]
-        ).run();
+        let body = {};
+        try { body = await request.json(); } catch(e) {}
 
-        return jsonResponse({ success: true, message: 'บันทึกสรุปถอดบทเรียนลง Cloudflare D1 สำเร็จ' }, corsHeaders);
-      }
+        if (request.method === 'DELETE' || body.action === 'delete' || url.searchParams.get('action') === 'delete') {
+          const targetId = body.id || queryId || url.searchParams.get('id');
+          if (targetId) {
+            await env.DB.prepare('DELETE FROM student_checklists WHERE id = ?').bind(targetId).run().catch(() => {});
+          }
+          return jsonResponse({ success: true, message: `ลบสรุปถอดบทเรียน ${targetId} สำเร็จ` }, corsHeaders);
+        }
 
-      // -------------------------------------------------------------
-      // 6. API: ดึงรายการสรุปถอดบทเรียนทั้งหมดจาก D1 Database
-      // -------------------------------------------------------------
-      if (pathname === '/api/checklists' && request.method === 'GET') {
-        if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
-        const { results } = await env.DB.prepare('SELECT * FROM student_checklists ORDER BY timestamp DESC').all();
-        return jsonResponse(results || [], corsHeaders);
-      }
+        if (request.method === 'GET') {
+          const { results } = await env.DB.prepare('SELECT * FROM student_checklists ORDER BY timestamp DESC').all();
+          const formatted = (results || []).map(item => ({
+            id: item.id,
+            name: item.name,
+            studentClass: item.student_class || item.studentClass || '',
+            studentNo: item.student_no || item.studentNo || '',
+            bestPractices: item.best_practices || item.bestPractices || '',
+            thingsToAvoid: item.things_to_avoid || item.thingsToAvoid || '',
+            ruleColor: item.rule_color || item.ruleColor || '',
+            ruleFont: item.rule_font || item.ruleFont || '',
+            ruleCta: item.rule_cta || item.ruleCta || '',
+            timestamp: item.timestamp || ''
+          }));
+          return jsonResponse(formatted, corsHeaders);
+        }
 
-      // -------------------------------------------------------------
-      // 7. API: ลบรายการสรุปถอดบทเรียนออกจาก D1 Database (DELETE)
-      // -------------------------------------------------------------
-      if (pathname === '/api/checklists' && request.method === 'DELETE') {
-        if (!env.DB) return jsonResponse({ error: 'DB Binding Not Found' }, corsHeaders, 500);
-        if (!queryId) return jsonResponse({ error: 'Missing checklist ID' }, corsHeaders, 400);
+        if (request.method === 'POST') {
+          await env.DB.prepare(`
+            INSERT INTO student_checklists (id, name, student_class, student_no, best_practices, things_to_avoid, rule_color, rule_font, rule_cta, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            body.id || 'chk-' + Date.now(),
+            body.name,
+            body.studentClass,
+            body.studentNo,
+            body.bestPractices,
+            body.thingsToAvoid,
+            body.ruleColor,
+            body.ruleFont,
+            body.ruleCta,
+            body.timestamp || new Date().toISOString().split('T')[0]
+          ).run();
 
-        await env.DB.prepare('DELETE FROM student_checklists WHERE id = ?').bind(queryId).run();
-        return jsonResponse({ success: true, message: `ลบสรุปถอดบทเรียน ${queryId} เรียบร้อย` }, corsHeaders);
+          return jsonResponse({ success: true, message: 'บันทึกสรุปถอดบทเรียนลง Cloudflare D1 สำเร็จ' }, corsHeaders);
+        }
       }
 
       return jsonResponse({ message: 'Cloudflare D1 Real-time API Engine Active' }, corsHeaders);
