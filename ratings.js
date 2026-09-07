@@ -50,15 +50,15 @@ export async function onRequest(context) {
         const numId = Number(ratingId);
         if (!isNaN(numId) && numId > 0) {
           const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(numId).run().catch(() => ({}));
-          if (res && res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)) {
-            deletedCount += (res.meta.changes || res.meta.rows_written || 1);
+          if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
+            deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
           }
         }
       }
 
-      // Stage 2: ลบด้วย media_id + ข้อความคอมเมนต์ (Exact / Substring / Trim / Replace Match)
+      // Stage 2: ลบด้วย media_id + ข้อความคอมเมนต์ (Exact / Substring / Trim Match)
       if (deletedCount === 0 && mediaId && (rawRef || cleanRef)) {
-        const pattern = `%${cleanRef.substring(0, 10)}%`;
+        const refPattern = `%${cleanRef.substring(0, 10)}%`;
         const res = await env.DB.prepare(`
           DELETE FROM media_ratings 
           WHERE media_id = ? 
@@ -68,11 +68,10 @@ export async function onRequest(context) {
               OR TRIM(reflection) = ? 
               OR reflection LIKE ?
               OR REPLACE(reflection, '"', '') LIKE ?
-              OR REPLACE(reflection, '\\"', '') LIKE ?
             )
-        `).bind(mediaId, rawRef, rawRef, cleanRef, pattern, pattern, pattern).run().catch(() => ({}));
-        if (res && res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)) {
-          deletedCount += (res.meta.changes || res.meta.rows_written || 1);
+        `).bind(mediaId, rawRef, rawRef, cleanRef, refPattern, refPattern).run().catch(() => ({}));
+        if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
+          deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
         }
       }
 
@@ -86,8 +85,8 @@ export async function onRequest(context) {
 
         if (row && row.id) {
           const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
-          if (res && res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)) {
-            deletedCount += (res.meta.changes || res.meta.rows_written || 1);
+          if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
+            deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
           }
         }
       }
@@ -102,8 +101,8 @@ export async function onRequest(context) {
 
         if (row && row.id) {
           const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
-          if (res && res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)) {
-            deletedCount += (res.meta.changes || res.meta.rows_written || 1);
+          if (res && (res.success || (res.meta && (res.meta.changes > 0 || res.meta.rows_written > 0)))) {
+            deletedCount += (res.meta?.changes || res.meta?.rows_written || 1);
           }
         }
       }

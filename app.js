@@ -168,16 +168,32 @@ function markChecklistAsDeleted(id) {
 function getDeletedRatingKeys() {
   try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY_DELETED_RATINGS) || '[]')); } catch (e) { return new Set(); }
 }
-function markRatingAsDeleted(mediaId, reflection) {
-  if (!reflection) return;
+function markRatingAsDeleted(mediaId, ratingId, reflection) {
   const set = getDeletedRatingKeys();
-  const refTrim = reflection.trim();
-  set.add(`${mediaId}:::${refTrim}`);
-  set.add(refTrim);
+  if (ratingId) set.add(String(ratingId));
+  if (reflection) {
+    const refTrim = reflection.trim();
+    set.add(`${mediaId}:::${refTrim}`);
+    set.add(refTrim);
+  }
   localStorage.setItem(STORAGE_KEY_DELETED_RATINGS, JSON.stringify(Array.from(set)));
 }
+
 function filterDeletedRatingsFromMedia(mediaArray) {
-  // Cloudflare D1 Database คือฐานข้อมูลหลัก (Single Source of Truth) เพียงแห่งเดียวสำหรับทุกอุปกรณ์และทุกบราวเซอร์
+  const deletedKeys = getDeletedRatingKeys();
+  if (!deletedKeys || deletedKeys.size === 0) return mediaArray;
+
+  mediaArray.forEach(item => {
+    if (item && item.ratings && Array.isArray(item.ratings)) {
+      item.ratings = item.ratings.filter(r => {
+        if (r.id && deletedKeys.has(String(r.id))) return false;
+        const ref = (r.reflection || '').trim();
+        if (ref && (deletedKeys.has(`${item.id}:::${ref}`) || deletedKeys.has(ref))) return false;
+        return true;
+      });
+    }
+  });
+
   return mediaArray;
 }
 
@@ -219,9 +235,6 @@ function loadSelfAssessmentsFromStorage() {
 }
 
 function initApp() {
-  // Clear any old local masks so Cloudflare D1 Database is 100% authoritative single source of truth across all devices/browsers
-  localStorage.removeItem(STORAGE_KEY_DELETED_RATINGS);
-
   // 1. Restore Admin Mode Session (ป้องกันหลุดเมื่อรีเฟรชหน้าเว็บ F5)
   isAdminLoggedIn = sessionStorage.getItem('exemplar_admin_logged_in') === 'true';
 
@@ -1508,6 +1521,11 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
     if (targetIndex !== -1) {
       const deletedRating = item.ratings[targetIndex];
 
+      // Mark in persistent local storage so hardcoded or cached comments will never resurface
+      if (deletedRating) {
+        markRatingAsDeleted(mediaId, deletedRating.id || '', deletedRating.reflection || '');
+      }
+
       item.ratings.splice(targetIndex, 1);
 
       saveMediaToStorage();
@@ -1530,9 +1548,9 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
       const payload = {
         action: 'delete',
         mediaId: mediaId,
-        ratingId: deletedRating ? deletedRating.id || '' : '',
-        timestamp: deletedRating ? deletedRating.timestamp || '' : '',
-        reflection: deletedRating ? deletedRating.reflection || '' : '',
+        ratingId: deletedRating ? (deletedRating.id || '') : '',
+        timestamp: deletedRating ? (deletedRating.timestamp || '') : '',
+        reflection: deletedRating ? (deletedRating.reflection || '') : '',
         readability: deletedRating ? deletedRating.readability : null,
         visualHarmony: deletedRating ? (deletedRating.visualHarmony || deletedRating.visual_harmony) : null,
         focusCta: deletedRating ? (deletedRating.focusCta || deletedRating.focus_cta) : null
@@ -1540,6 +1558,12 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
 
       fetch(apiUrl, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+
+      fetch(getApiUrl('/ratings'), {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(() => {
