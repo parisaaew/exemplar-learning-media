@@ -265,6 +265,7 @@ function fetchLiveDataFromD1() {
     let hasChanged = false;
 
     if (Array.isArray(mediaData) && mediaData.length > 0) {
+      filterDeletedRatingsFromMedia(mediaData);
       if (JSON.stringify(mediaData) !== JSON.stringify(mediaList)) {
         mediaList = mediaData;
         saveMediaToStorage();
@@ -1506,6 +1507,11 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
 
     if (targetIndex !== -1) {
       const deletedRating = item.ratings[targetIndex];
+
+      if (deletedRating && deletedRating.reflection) {
+        markRatingAsDeleted(mediaId, deletedRating.reflection);
+      }
+
       item.ratings.splice(targetIndex, 1);
 
       saveMediaToStorage();

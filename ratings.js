@@ -48,20 +48,23 @@ export async function onRequest(context) {
       }
 
       // 2. ถ้าลบด้วย ID แล้วยังไม่พบ ให้ลบด้วย media_id + reflection/timestamp เป็นตัวสำรอง (Fallback Deletion)
-      if (deletedCount === 0 && (mediaId && (rawRef || cleanRef))) {
-        await env.DB.prepare(`
-          DELETE FROM media_ratings 
-          WHERE media_id = ? 
-            AND (
-              TRIM(reflection) = ? 
-              OR TRIM(reflection) = ? 
-              OR reflection LIKE ?
-              OR REPLACE(reflection, '"', '') LIKE ?
-            )
-        `).bind(mediaId, rawRef, cleanRef, `%${cleanRef}%`, `%${cleanRef}%`).run().catch(() => {});
-      } else if (deletedCount === 0 && mediaId && timestamp) {
-        await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
-          .bind(mediaId, timestamp).run().catch(() => {});
+      if (deletedCount === 0 && mediaId) {
+        if (cleanRef) {
+          const searchPattern = `%${cleanRef.substring(0, 15)}%`;
+          await env.DB.prepare(`
+            DELETE FROM media_ratings 
+            WHERE media_id = ? 
+              AND (
+                TRIM(reflection) = ? 
+                OR TRIM(reflection) = ? 
+                OR reflection LIKE ?
+                OR REPLACE(reflection, '"', '') LIKE ?
+              )
+          `).bind(mediaId, rawRef, cleanRef, searchPattern, searchPattern).run().catch(() => {});
+        } else if (timestamp) {
+          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
+            .bind(mediaId, timestamp).run().catch(() => {});
+        }
       }
 
       return new Response(JSON.stringify({ success: true, message: 'ลบความคิดเห็นถอดบทเรียนจาก D1 สำเร็จ' }), {
