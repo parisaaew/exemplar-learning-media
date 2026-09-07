@@ -1543,8 +1543,8 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(() => {
-        setTimeout(fetchLiveDataFromD1, 300);
-        setTimeout(fetchLiveDataFromD1, 1200);
+        setTimeout(fetchLiveDataFromD1, 1500);
+        setTimeout(fetchLiveDataFromD1, 3500);
       }).catch(err => console.log('Rating delete sync note:', err));
 
       showToast('ลบความคิดเห็นถอดบทเรียนเรียบร้อยแล้ว');
