@@ -11,6 +11,9 @@ export async function onRequest(context) {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   };
 
   if (method === 'OPTIONS') {
@@ -33,10 +36,13 @@ export async function onRequest(context) {
       const rawRef = (body.reflection || new URL(request.url).searchParams.get('reflection') || '').trim();
       const cleanRef = rawRef.replace(/^["']|["']$/g, '').trim();
       const timestamp = body.timestamp || new URL(request.url).searchParams.get('timestamp');
+      const r1 = Number(body.readability || 0);
+      const r2 = Number(body.visualHarmony || body.visual_harmony || 0);
+      const r3 = Number(body.focusCta || body.focus_cta || 0);
 
       let deletedCount = 0;
 
-      // 1. ลบด้วย ID หลักของตาราง media_ratings ก่อน (Primary Key Deletion - แม่นยำที่สุด 100%)
+      // Stage 1: ลบด้วย Primary Key ID ใน D1 Database (ตรงเป๊ะ 100%)
       if (ratingId && ratingId !== 'undefined' && ratingId !== 'null' && ratingId !== '') {
         const numId = Number(ratingId);
         if (!isNaN(numId) && numId > 0) {
@@ -47,27 +53,72 @@ export async function onRequest(context) {
         }
       }
 
-      // 2. ถ้าลบด้วย ID แล้วยังไม่พบ ให้ลบด้วย media_id + reflection/timestamp เป็นตัวสำรอง (Fallback Deletion)
-      if (deletedCount === 0 && mediaId) {
-        if (cleanRef) {
-          const searchPattern = `%${cleanRef.substring(0, 15)}%`;
-          await env.DB.prepare(`
-            DELETE FROM media_ratings 
-            WHERE media_id = ? 
-              AND (
-                TRIM(reflection) = ? 
-                OR TRIM(reflection) = ? 
-                OR reflection LIKE ?
-                OR REPLACE(reflection, '"', '') LIKE ?
-              )
-          `).bind(mediaId, rawRef, cleanRef, searchPattern, searchPattern).run().catch(() => {});
-        } else if (timestamp) {
-          await env.DB.prepare('DELETE FROM media_ratings WHERE media_id = ? AND timestamp = ?')
-            .bind(mediaId, timestamp).run().catch(() => {});
+      // Stage 2: ลบด้วย media_id + ข้อความตัวอักษรคอมเมนต์ (Exact Reflection Text Match)
+      if (deletedCount === 0 && mediaId && (rawRef || cleanRef)) {
+        const res = await env.DB.prepare(`
+          DELETE FROM media_ratings 
+          WHERE media_id = ? 
+            AND (
+              TRIM(reflection) = ? 
+              OR TRIM(reflection) = ? 
+              OR reflection = ? 
+              OR REPLACE(reflection, '"', '') = ?
+            )
+        `).bind(mediaId, rawRef, cleanRef, rawRef, cleanRef).run().catch(() => ({}));
+        if (res && res.meta && res.meta.changes > 0) {
+          deletedCount += res.meta.changes;
         }
       }
 
-      return new Response(JSON.stringify({ success: true, message: 'ลบความคิดเห็นถอดบทเรียนจาก D1 สำเร็จ' }), {
+      // Stage 3: ลบด้วย media_id + Substring Reflection Match (กรณีมีอักขระพิเศษ)
+      if (deletedCount === 0 && mediaId && cleanRef && cleanRef.length >= 3) {
+        const searchPattern = `%${cleanRef.substring(0, 15)}%`;
+        const res = await env.DB.prepare(`
+          DELETE FROM media_ratings 
+          WHERE media_id = ? 
+            AND (
+              reflection LIKE ? 
+              OR REPLACE(reflection, '"', '') LIKE ?
+            )
+        `).bind(mediaId, searchPattern, searchPattern).run().catch(() => ({}));
+        if (res && res.meta && res.meta.changes > 0) {
+          deletedCount += res.meta.changes;
+        }
+      }
+
+      // Stage 4: ลบด้วย media_id + 3D Scores + Timestamp
+      if (deletedCount === 0 && mediaId && r1 > 0 && r2 > 0 && r3 > 0 && timestamp) {
+        const row = await env.DB.prepare(`
+          SELECT id FROM media_ratings 
+          WHERE media_id = ? AND readability = ? AND visual_harmony = ? AND focus_cta = ? AND timestamp = ?
+          ORDER BY id DESC LIMIT 1
+        `).bind(mediaId, r1, r2, r3, timestamp).first().catch(() => null);
+
+        if (row && row.id) {
+          const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
+          if (res && res.meta && res.meta.changes > 0) {
+            deletedCount += res.meta.changes;
+          }
+        }
+      }
+
+      // Stage 5: ลบด้วย คะแนนดาว 3 มิติ (ลบเฉพาะ 1 แถวถ้าระบุคะแนนครบ เพื่อไม่กระทบคนอื่น)
+      if (deletedCount === 0 && mediaId && r1 > 0 && r2 > 0 && r3 > 0) {
+        const row = await env.DB.prepare(`
+          SELECT id FROM media_ratings 
+          WHERE media_id = ? AND readability = ? AND visual_harmony = ? AND focus_cta = ?
+          ORDER BY id DESC LIMIT 1
+        `).bind(mediaId, r1, r2, r3).first().catch(() => null);
+
+        if (row && row.id) {
+          const res = await env.DB.prepare('DELETE FROM media_ratings WHERE id = ?').bind(row.id).run().catch(() => ({}));
+          if (res && res.meta && res.meta.changes > 0) {
+            deletedCount += res.meta.changes;
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, message: 'ลบความคิดเห็นถอดบทเรียนจาก D1 สำเร็จ', deletedCount }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
       });
     }

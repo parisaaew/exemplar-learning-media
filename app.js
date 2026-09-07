@@ -244,11 +244,12 @@ function initApp() {
   // 3. ดึงข้อมูลสดจาก Cloudflare D1 Database ในฉากหลัง
   fetchLiveDataFromD1();
 
-  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 10 วินาทีอย่างนุ่มนวลและไม่แย่งสัญญาณเน็ต
-  setInterval(fetchLiveDataFromD1, 10000);
+  // 4. ตั้งระบบ Auto-Sync Real-time ดึงข้อมูลสดจาก D1 ทุก 5 วินาทีอย่างนุ่มนวลและไม่แย่งสัญญาณเน็ต
+  setInterval(fetchLiveDataFromD1, 5000);
 }
 
 let isFetchingD1 = false;
+let activeViewingMediaId = null;
 
 function fetchLiveDataFromD1() {
   if (isFetchingD1) return;
@@ -300,6 +301,12 @@ function fetchLiveDataFromD1() {
     // วาดภาพหน้าจอใหม่เฉพาะเมื่อมีข้อมูลเปลี่ยนแปลงจริง ป้องกันหน้าจอกระพริบ 100%
     if (hasChanged) {
       renderApp();
+      if (activeViewingMediaId) {
+        const viewerModal = document.getElementById('mediaViewerModal');
+        if (viewerModal && !viewerModal.classList.contains('hidden')) {
+          openMediaViewer(activeViewingMediaId);
+        }
+      }
     }
   }).catch(err => {
     console.error('Fetch D1 Error:', err);
@@ -1370,6 +1377,7 @@ function handleRatingSubmit(e) {
 // ==========================================
 
 function openMediaViewer(mediaId) {
+  activeViewingMediaId = mediaId;
   const item = mediaList.find(m => m.id === mediaId);
   if (!item) return;
 
@@ -1484,6 +1492,7 @@ function openMediaViewer(mediaId) {
 }
 
 function closeViewerModal() {
+  activeViewingMediaId = null;
   document.getElementById('mediaViewerModal').classList.add('hidden');
   document.getElementById('viewerContentContainer').innerHTML = '';
 }
@@ -1498,7 +1507,7 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
     let targetIndex = -1;
 
     if (ratingId && ratingId !== 'undefined' && ratingId !== 'null' && ratingId !== '') {
-      targetIndex = item.ratings.findIndex(r => r.id === ratingId);
+      targetIndex = item.ratings.findIndex(r => r.id == ratingId);
     }
 
     if (targetIndex === -1 && typeof realIdx === 'number' && realIdx >= 0 && realIdx < item.ratings.length) {
@@ -1526,10 +1535,13 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
           mediaId: mediaId,
           ratingId: deletedRating ? deletedRating.id || '' : '',
           timestamp: deletedRating ? deletedRating.timestamp || '' : '',
-          reflection: deletedRating ? deletedRating.reflection || '' : ''
+          reflection: deletedRating ? deletedRating.reflection || '' : '',
+          readability: deletedRating ? deletedRating.readability : null,
+          visualHarmony: deletedRating ? (deletedRating.visualHarmony || deletedRating.visual_harmony) : null,
+          focusCta: deletedRating ? (deletedRating.focusCta || deletedRating.focus_cta) : null
         })
       }).then(() => {
-        setTimeout(fetchLiveDataFromD1, 600);
+        setTimeout(fetchLiveDataFromD1, 300);
       }).catch(err => console.log('Rating delete sync note:', err));
 
       showToast('ลบความคิดเห็นถอดบทเรียนเรียบร้อยแล้ว');
