@@ -92,8 +92,8 @@ export async function onRequest(context) {
         }
       }
 
-      // Stage 4: Safety Fallback - ลบรายการประเมินล่าสุดของ media_id นั้น 1 แถว การันตีลบออก 100%
-      if (deletedCount === 0 && (mediaId || decodedMediaId)) {
+      // Stage 4: Safety Fallback - ลบรายการประเมินล่าสุดของ media_id นั้น 1 แถว (เฉพาะกรณีไม่ระบุ ratingId และไม่ระบุ reflection)
+      if (deletedCount === 0 && (mediaId || decodedMediaId) && (!ratingId || ratingId === '') && (!rawRef || rawRef === '')) {
         const row = await env.DB.prepare(`
           SELECT id FROM media_ratings 
           WHERE media_id = ? OR media_id = ?
@@ -113,9 +113,9 @@ export async function onRequest(context) {
     }
 
     if (method === 'POST') {
-      // Guard: ป้องกันการกดลบแล้วเผลอเพิ่มบรรทัดใหม่
-      if (!body.mediaId || body.action === 'delete' || url.searchParams.get('action') === 'delete') {
-        return new Response(JSON.stringify({ message: 'No action taken' }), {
+      const isDelete = (body && body.action === 'delete') || (url.searchParams.get('action') === 'delete');
+      if (isDelete || !body.mediaId) {
+        return new Response(JSON.stringify({ success: true, message: 'No insertion on delete action' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' }
         });
       }

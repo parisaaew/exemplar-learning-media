@@ -1552,7 +1552,7 @@ function deleteComment(event, mediaId, ratingId, realIdx) {
         body: JSON.stringify(payload)
       }).catch(() => {});
 
-      fetch(getApiUrl('/ratings'), {
+      fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

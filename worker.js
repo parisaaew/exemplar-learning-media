@@ -197,8 +197,8 @@ export default {
             }
           }
 
-          // Stage 4: Safety Fallback - ลบรายการประเมินล่าสุดของ media_id นั้น 1 แถว การันตีลบออก 100%
-          if (deletedCount === 0 && (mediaId || decodedMediaId)) {
+          // Stage 4: Safety Fallback - ลบรายการประเมินล่าสุดของ media_id นั้น 1 แถว (เฉพาะกรณีไม่ระบุ ratingId และไม่ระบุ reflection)
+          if (deletedCount === 0 && (mediaId || decodedMediaId) && (!ratingId || ratingId === '') && (!rawRef || rawRef === '')) {
             const row = await env.DB.prepare(`
               SELECT id FROM media_ratings 
               WHERE media_id = ? OR media_id = ?
@@ -216,9 +216,9 @@ export default {
         }
 
         if (request.method === 'POST') {
-          // Guard: ป้องกันการเพิ่มข้อมูลใหม่ขณะสั่งลบ
-          if (!body.mediaId || body.action === 'delete' || url.searchParams.get('action') === 'delete') {
-            return jsonResponse({ message: 'No action taken for delete' }, corsHeaders);
+          const isDelete = (body && body.action === 'delete') || (url.searchParams.get('action') === 'delete');
+          if (isDelete || !body.mediaId) {
+            return jsonResponse({ message: 'No insertion on delete action' }, corsHeaders);
           }
 
           await env.DB.prepare(`
