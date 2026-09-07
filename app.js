@@ -235,13 +235,9 @@ function loadSelfAssessmentsFromStorage() {
 }
 
 function initApp() {
-  // Auto-purge stale local cache on mobile devices (e.g. iPad Safari) when a new build is deployed
+  // Safe build version check (preserves local media cache until D1 fresh fetch succeeds)
   const CURRENT_BUILD = 'v86.0';
   if (localStorage.getItem('exemplar_build_version') !== CURRENT_BUILD) {
-    localStorage.removeItem(STORAGE_KEY_MEDIA);
-    localStorage.removeItem(STORAGE_KEY_CATEGORIES);
-    localStorage.removeItem(STORAGE_KEY_CHECKLISTS);
-    localStorage.removeItem(STORAGE_KEY_SELF_ASSESSMENTS);
     localStorage.removeItem(STORAGE_KEY_DELETED_RATINGS);
     localStorage.setItem('exemplar_build_version', CURRENT_BUILD);
   }
@@ -266,17 +262,37 @@ function initApp() {
 let isFetchingD1 = false;
 let activeViewingMediaId = null;
 
+async function safeFetchD1(endpoint) {
+  try {
+    const ts = Date.now();
+    const res = await fetch(getApiUrl(endpoint + (endpoint.includes('?') ? '&' : '?') + '_t=' + ts));
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      console.warn(`[D1 Sync Warning] ${endpoint} returned HTML content (Cloudflare Pages Functions route not matched).`);
+      return null;
+    }
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      console.warn(`[D1 Sync Warning] ${endpoint} payload starts with HTML markup.`);
+      return null;
+    }
+    return JSON.parse(text);
+  } catch (err) {
+    console.error(`[D1 Sync Error] ${endpoint}:`, err);
+    return null;
+  }
+}
+
 function fetchLiveDataFromD1() {
   if (isFetchingD1) return;
   isFetchingD1 = true;
 
-  const ts = Date.now();
-
   Promise.all([
-    fetch(getApiUrl('/media?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(getApiUrl('/categories?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(getApiUrl('/checklists?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null),
-    fetch(getApiUrl('/self-assessments?_t=' + ts)).then(r => r.ok ? r.json() : null).catch(() => null)
+    safeFetchD1('/media'),
+    safeFetchD1('/categories'),
+    safeFetchD1('/checklists'),
+    safeFetchD1('/self-assessments')
   ]).then(([mediaData, categoriesData, checklistsData, selfAssessmentsData]) => {
     let hasChanged = false;
 
